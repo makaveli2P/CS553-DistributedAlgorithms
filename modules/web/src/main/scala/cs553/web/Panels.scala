@@ -72,6 +72,7 @@ object Panels {
           case None                       => "Can be delivered now."
           case Some(Blocked.Behind(head)) => s"Waits behind $head. This channel is FIFO."
           case Some(Blocked.Past)         => "Continue from this step to deliver it."
+          case Some(Blocked.Recorded)     => Session.recordingLine
         }
         List(
           header(env.label, dispatch),
@@ -90,10 +91,20 @@ object Panels {
 
   private def fields(settings: SettingsView, dispatch: Observer[UiEvent]): List[HtmlElement] =
     List(
+      div(
+        cls("field"),
+        span("Source"),
+        div(
+          cls("choice-col"),
+          settings.sources.map(src => sourceOption(src, settings, dispatch))
+        ),
+        settings.recordedLine.map(line => p(cls("hint"), line))
+      ),
       label(
         cls("field"),
         span("Topology"),
         select(
+          disabled(settings.source != RunSource.Browser),
           settings.presets.map(choice =>
             option(
               value(choice.name),
@@ -109,6 +120,7 @@ object Panels {
         span("Seed"),
         input(
           typ("number"),
+          disabled(settings.source != RunSource.Browser),
           minAttr("0"),
           stepAttr("1"),
           defaultValue(settings.seed.toString),
@@ -132,9 +144,29 @@ object Panels {
           orderOption("Any order", ChannelOrder.AnyOrder, settings, dispatch)
         ),
         settings.orderLock.map(reason => p(cls("hint"), reason))
+      )
+    ) ++ Option
+      .when(settings.source == RunSource.Browser)(
+        p(cls("hint", "settings-hint"), "A change starts a new run.")
+      )
+      .toList
+
+  private def sourceOption(
+      src: RunSource,
+      settings: SettingsView,
+      dispatch: Observer[UiEvent]
+  ): HtmlElement = {
+    label(
+      cls("choice"),
+      input(
+        typ("radio"),
+        nameAttr("source"),
+        checked(settings.source == src),
+        onChange.mapTo(UiEvent.ChooseSource(src)) --> dispatch
       ),
-      p(cls("hint", "settings-hint"), "A change starts a new run.")
+      span(src.label)
     )
+  }
 
   private def orderOption(
       text: String,
@@ -148,7 +180,7 @@ object Panels {
         typ("radio"),
         nameAttr("order"),
         checked(settings.order == order),
-        disabled(settings.orderLock.isDefined),
+        disabled(settings.orderLock.isDefined || settings.source != RunSource.Browser),
         onChange.mapTo(UiEvent.ChooseOrder(order)) --> dispatch
       ),
       span(text)

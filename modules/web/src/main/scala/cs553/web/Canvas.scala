@@ -301,7 +301,8 @@ object Mailbox {
     case None                       => s"${e.describe}. Click to deliver."
     case Some(Blocked.Behind(head)) =>
       s"${e.describe}. It waits behind $head: this channel is FIFO."
-    case Some(Blocked.Past) => s"${e.describe}. Continue from this step to deliver it."
+    case Some(Blocked.Past)     => s"${e.describe}. Continue from this step to deliver it."
+    case Some(Blocked.Recorded) => s"${e.describe}. ${Session.recordingLine}"
   }
 
   private def event(e: EnvelopeView): UiEvent = e.blocked match {

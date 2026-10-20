@@ -1,0 +1,1928 @@
+{
+  "trace" : [
+    {
+      "Started" : {
+        "spec" : {
+          "algorithm" : "tarry",
+          "topology" : {
+            "nodes" : [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "edges" : [
+              {
+                "from" : 1,
+                "to" : 2
+              },
+              {
+                "from" : 1,
+                "to" : 3
+              },
+              {
+                "from" : 1,
+                "to" : 4
+              },
+              {
+                "from" : 2,
+                "to" : 1
+              },
+              {
+                "from" : 2,
+                "to" : 5
+              },
+              {
+                "from" : 2,
+                "to" : 6
+              },
+              {
+                "from" : 3,
+                "to" : 1
+              },
+              {
+                "from" : 3,
+                "to" : 5
+              },
+              {
+                "from" : 4,
+                "to" : 1
+              },
+              {
+                "from" : 4,
+                "to" : 6
+              },
+              {
+                "from" : 5,
+                "to" : 2
+              },
+              {
+                "from" : 5,
+                "to" : 3
+              },
+              {
+                "from" : 6,
+                "to" : 2
+              },
+              {
+                "from" : 6,
+                "to" : 4
+              }
+            ],
+            "attrs" : {
+              "5" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  
+                }
+              },
+              "1" : {
+                "role" : {
+                  "Initiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  
+                }
+              },
+              "6" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  
+                }
+              },
+              "2" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  
+                }
+              },
+              "3" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  
+                }
+              },
+              "4" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  
+                }
+              }
+            }
+          },
+          "order" : {
+            "Fifo" : {
+              
+            }
+          },
+          "policy" : {
+            "Seeded" : {
+              "seed" : "1"
+            }
+          },
+          "stop" : {
+            "AtFirstDecision" : {
+              
+            }
+          },
+          "stepLimit" : 1000
+        },
+        "engine" : {
+          "AkkaFreeRun" : {
+            
+          }
+        },
+        "initial" : {
+          "1" : {
+            "role" : {
+              "Initiator" : {
+                
+              }
+            },
+            "phase" : {
+              "Idle" : {
+                
+              }
+            },
+            "parent" : null,
+            "sent" : [
+            ],
+            "received" : [
+            ],
+            "degree" : 3
+          },
+          "2" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "phase" : {
+              "Idle" : {
+                
+              }
+            },
+            "parent" : null,
+            "sent" : [
+            ],
+            "received" : [
+            ],
+            "degree" : 3
+          },
+          "3" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "phase" : {
+              "Idle" : {
+                
+              }
+            },
+            "parent" : null,
+            "sent" : [
+            ],
+            "received" : [
+            ],
+            "degree" : 2
+          },
+          "4" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "phase" : {
+              "Idle" : {
+                
+              }
+            },
+            "parent" : null,
+            "sent" : [
+            ],
+            "received" : [
+            ],
+            "degree" : 2
+          },
+          "5" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "phase" : {
+              "Idle" : {
+                
+              }
+            },
+            "parent" : null,
+            "sent" : [
+            ],
+            "received" : [
+            ],
+            "degree" : 2
+          },
+          "6" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "phase" : {
+              "Idle" : {
+                
+              }
+            },
+            "parent" : null,
+            "sent" : [
+            ],
+            "received" : [
+            ],
+            "degree" : 2
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 1,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "node" : 1,
+        "cause" : {
+          "Fire" : {
+            "node" : 1,
+            "action" : {
+              "Wake" : {
+                
+              }
+            }
+          }
+        },
+        "rule" : "wake",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Holding" : {
+              
+            }
+          },
+          "parent" : null,
+          "sent" : [
+          ],
+          "received" : [
+          ],
+          "degree" : 3
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 2,
+          "local" : 2,
+          "lamport" : 2
+        },
+        "node" : 1,
+        "cause" : {
+          "Fire" : {
+            "node" : 1,
+            "action" : {
+              "Pass" : {
+                "to" : 3
+              }
+            }
+          }
+        },
+        "rule" : "pass",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          },
+          "parent" : null,
+          "sent" : [
+            3
+          ],
+          "received" : [
+          ],
+          "degree" : 3
+        },
+        "sent" : [
+          {
+            "from" : 1,
+            "to" : 3,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 2,
+          "local" : 2,
+          "lamport" : 2
+        },
+        "env" : {
+          "id" : {
+            "from" : 1,
+            "to" : 3,
+            "seq" : 0
+          },
+          "msg" : {
+            "Token" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 3,
+          "local" : 1,
+          "lamport" : 3
+        },
+        "node" : 3,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 1,
+              "to" : 3,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "first-token",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Holding" : {
+              
+            }
+          },
+          "parent" : 1,
+          "sent" : [
+          ],
+          "received" : [
+            1
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 4,
+          "local" : 2,
+          "lamport" : 4
+        },
+        "node" : 3,
+        "cause" : {
+          "Fire" : {
+            "node" : 3,
+            "action" : {
+              "Pass" : {
+                "to" : 5
+              }
+            }
+          }
+        },
+        "rule" : "pass",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          },
+          "parent" : 1,
+          "sent" : [
+            5
+          ],
+          "received" : [
+            1
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+          {
+            "from" : 3,
+            "to" : 5,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 4,
+          "local" : 2,
+          "lamport" : 4
+        },
+        "env" : {
+          "id" : {
+            "from" : 3,
+            "to" : 5,
+            "seq" : 0
+          },
+          "msg" : {
+            "Token" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 5,
+          "local" : 1,
+          "lamport" : 5
+        },
+        "node" : 5,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 3,
+              "to" : 5,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "first-token",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Holding" : {
+              
+            }
+          },
+          "parent" : 3,
+          "sent" : [
+          ],
+          "received" : [
+            3
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 6,
+          "local" : 2,
+          "lamport" : 6
+        },
+        "node" : 5,
+        "cause" : {
+          "Fire" : {
+            "node" : 5,
+            "action" : {
+              "Pass" : {
+                "to" : 2
+              }
+            }
+          }
+        },
+        "rule" : "pass",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          },
+          "parent" : 3,
+          "sent" : [
+            2
+          ],
+          "received" : [
+            3
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+          {
+            "from" : 5,
+            "to" : 2,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 6,
+          "local" : 2,
+          "lamport" : 6
+        },
+        "env" : {
+          "id" : {
+            "from" : 5,
+            "to" : 2,
+            "seq" : 0
+          },
+          "msg" : {
+            "Token" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 7,
+          "local" : 1,
+          "lamport" : 7
+        },
+        "node" : 2,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 5,
+              "to" : 2,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "first-token",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Holding" : {
+              
+            }
+          },
+          "parent" : 5,
+          "sent" : [
+          ],
+          "received" : [
+            5
+          ],
+          "degree" : 3
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 8,
+          "local" : 2,
+          "lamport" : 8
+        },
+        "node" : 2,
+        "cause" : {
+          "Fire" : {
+            "node" : 2,
+            "action" : {
+              "Pass" : {
+                "to" : 6
+              }
+            }
+          }
+        },
+        "rule" : "pass",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          },
+          "parent" : 5,
+          "sent" : [
+            6
+          ],
+          "received" : [
+            5
+          ],
+          "degree" : 3
+        },
+        "sent" : [
+          {
+            "from" : 2,
+            "to" : 6,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 8,
+          "local" : 2,
+          "lamport" : 8
+        },
+        "env" : {
+          "id" : {
+            "from" : 2,
+            "to" : 6,
+            "seq" : 0
+          },
+          "msg" : {
+            "Token" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 9,
+          "local" : 1,
+          "lamport" : 9
+        },
+        "node" : 6,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 2,
+              "to" : 6,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "first-token",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Holding" : {
+              
+            }
+          },
+          "parent" : 2,
+          "sent" : [
+          ],
+          "received" : [
+            2
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 10,
+          "local" : 2,
+          "lamport" : 10
+        },
+        "node" : 6,
+        "cause" : {
+          "Fire" : {
+            "node" : 6,
+            "action" : {
+              "Pass" : {
+                "to" : 4
+              }
+            }
+          }
+        },
+        "rule" : "pass",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          },
+          "parent" : 2,
+          "sent" : [
+            4
+          ],
+          "received" : [
+            2
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+          {
+            "from" : 6,
+            "to" : 4,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 10,
+          "local" : 2,
+          "lamport" : 10
+        },
+        "env" : {
+          "id" : {
+            "from" : 6,
+            "to" : 4,
+            "seq" : 0
+          },
+          "msg" : {
+            "Token" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 11,
+          "local" : 1,
+          "lamport" : 11
+        },
+        "node" : 4,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 6,
+              "to" : 4,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "first-token",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Holding" : {
+              
+            }
+          },
+          "parent" : 6,
+          "sent" : [
+          ],
+          "received" : [
+            6
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 12,
+          "local" : 2,
+          "lamport" : 12
+        },
+        "node" : 4,
+        "cause" : {
+          "Fire" : {
+            "node" : 4,
+            "action" : {
+              "Pass" : {
+                "to" : 1
+              }
+            }
+          }
+        },
+        "rule" : "pass",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          },
+          "parent" : 6,
+          "sent" : [
+            1
+          ],
+          "received" : [
+            6
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+          {
+            "from" : 4,
+            "to" : 1,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 12,
+          "local" : 2,
+          "lamport" : 12
+        },
+        "env" : {
+          "id" : {
+            "from" : 4,
+            "to" : 1,
+            "seq" : 0
+          },
+          "msg" : {
+            "Token" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 13,
+          "local" : 3,
+          "lamport" : 13
+        },
+        "node" : 1,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 4,
+              "to" : 1,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "token-back",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Holding" : {
+              
+            }
+          },
+          "parent" : null,
+          "sent" : [
+            3
+          ],
+          "received" : [
+            4
+          ],
+          "degree" : 3
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 14,
+          "local" : 4,
+          "lamport" : 14
+        },
+        "node" : 1,
+        "cause" : {
+          "Fire" : {
+            "node" : 1,
+            "action" : {
+              "Pass" : {
+                "to" : 2
+              }
+            }
+          }
+        },
+        "rule" : "pass",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          },
+          "parent" : null,
+          "sent" : [
+            2,
+            3
+          ],
+          "received" : [
+            4
+          ],
+          "degree" : 3
+        },
+        "sent" : [
+          {
+            "from" : 1,
+            "to" : 2,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 14,
+          "local" : 4,
+          "lamport" : 14
+        },
+        "env" : {
+          "id" : {
+            "from" : 1,
+            "to" : 2,
+            "seq" : 0
+          },
+          "msg" : {
+            "Token" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 15,
+          "local" : 3,
+          "lamport" : 15
+        },
+        "node" : 2,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 1,
+              "to" : 2,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "token-back",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Holding" : {
+              
+            }
+          },
+          "parent" : 5,
+          "sent" : [
+            6
+          ],
+          "received" : [
+            1,
+            5
+          ],
+          "degree" : 3
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 16,
+          "local" : 4,
+          "lamport" : 16
+        },
+        "node" : 2,
+        "cause" : {
+          "Fire" : {
+            "node" : 2,
+            "action" : {
+              "Pass" : {
+                "to" : 1
+              }
+            }
+          }
+        },
+        "rule" : "pass",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          },
+          "parent" : 5,
+          "sent" : [
+            1,
+            6
+          ],
+          "received" : [
+            1,
+            5
+          ],
+          "degree" : 3
+        },
+        "sent" : [
+          {
+            "from" : 2,
+            "to" : 1,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 16,
+          "local" : 4,
+          "lamport" : 16
+        },
+        "env" : {
+          "id" : {
+            "from" : 2,
+            "to" : 1,
+            "seq" : 0
+          },
+          "msg" : {
+            "Token" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 17,
+          "local" : 5,
+          "lamport" : 17
+        },
+        "node" : 1,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 2,
+              "to" : 1,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "token-back",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Holding" : {
+              
+            }
+          },
+          "parent" : null,
+          "sent" : [
+            2,
+            3
+          ],
+          "received" : [
+            2,
+            4
+          ],
+          "degree" : 3
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 18,
+          "local" : 6,
+          "lamport" : 18
+        },
+        "node" : 1,
+        "cause" : {
+          "Fire" : {
+            "node" : 1,
+            "action" : {
+              "Pass" : {
+                "to" : 4
+              }
+            }
+          }
+        },
+        "rule" : "pass",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          },
+          "parent" : null,
+          "sent" : [
+            2,
+            3,
+            4
+          ],
+          "received" : [
+            2,
+            4
+          ],
+          "degree" : 3
+        },
+        "sent" : [
+          {
+            "from" : 1,
+            "to" : 4,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 18,
+          "local" : 6,
+          "lamport" : 18
+        },
+        "env" : {
+          "id" : {
+            "from" : 1,
+            "to" : 4,
+            "seq" : 0
+          },
+          "msg" : {
+            "Token" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 19,
+          "local" : 3,
+          "lamport" : 19
+        },
+        "node" : 4,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 1,
+              "to" : 4,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "token-back",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Holding" : {
+              
+            }
+          },
+          "parent" : 6,
+          "sent" : [
+            1
+          ],
+          "received" : [
+            1,
+            6
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 20,
+          "local" : 4,
+          "lamport" : 20
+        },
+        "node" : 4,
+        "cause" : {
+          "Fire" : {
+            "node" : 4,
+            "action" : {
+              "Pass" : {
+                "to" : 6
+              }
+            }
+          }
+        },
+        "rule" : "pass-to-parent",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Done" : {
+              
+            }
+          },
+          "parent" : 6,
+          "sent" : [
+            1,
+            6
+          ],
+          "received" : [
+            1,
+            6
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+          {
+            "from" : 4,
+            "to" : 6,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 20,
+          "local" : 4,
+          "lamport" : 20
+        },
+        "env" : {
+          "id" : {
+            "from" : 4,
+            "to" : 6,
+            "seq" : 0
+          },
+          "msg" : {
+            "Token" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 21,
+          "local" : 3,
+          "lamport" : 21
+        },
+        "node" : 6,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 4,
+              "to" : 6,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "token-back",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Holding" : {
+              
+            }
+          },
+          "parent" : 2,
+          "sent" : [
+            4
+          ],
+          "received" : [
+            2,
+            4
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 22,
+          "local" : 4,
+          "lamport" : 22
+        },
+        "node" : 6,
+        "cause" : {
+          "Fire" : {
+            "node" : 6,
+            "action" : {
+              "Pass" : {
+                "to" : 2
+              }
+            }
+          }
+        },
+        "rule" : "pass-to-parent",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Done" : {
+              
+            }
+          },
+          "parent" : 2,
+          "sent" : [
+            2,
+            4
+          ],
+          "received" : [
+            2,
+            4
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+          {
+            "from" : 6,
+            "to" : 2,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 22,
+          "local" : 4,
+          "lamport" : 22
+        },
+        "env" : {
+          "id" : {
+            "from" : 6,
+            "to" : 2,
+            "seq" : 0
+          },
+          "msg" : {
+            "Token" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 23,
+          "local" : 5,
+          "lamport" : 23
+        },
+        "node" : 2,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 6,
+              "to" : 2,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "token-back",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Holding" : {
+              
+            }
+          },
+          "parent" : 5,
+          "sent" : [
+            1,
+            6
+          ],
+          "received" : [
+            1,
+            5,
+            6
+          ],
+          "degree" : 3
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 24,
+          "local" : 6,
+          "lamport" : 24
+        },
+        "node" : 2,
+        "cause" : {
+          "Fire" : {
+            "node" : 2,
+            "action" : {
+              "Pass" : {
+                "to" : 5
+              }
+            }
+          }
+        },
+        "rule" : "pass-to-parent",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Done" : {
+              
+            }
+          },
+          "parent" : 5,
+          "sent" : [
+            1,
+            5,
+            6
+          ],
+          "received" : [
+            1,
+            5,
+            6
+          ],
+          "degree" : 3
+        },
+        "sent" : [
+          {
+            "from" : 2,
+            "to" : 5,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 24,
+          "local" : 6,
+          "lamport" : 24
+        },
+        "env" : {
+          "id" : {
+            "from" : 2,
+            "to" : 5,
+            "seq" : 0
+          },
+          "msg" : {
+            "Token" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 25,
+          "local" : 3,
+          "lamport" : 25
+        },
+        "node" : 5,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 2,
+              "to" : 5,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "token-back",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Holding" : {
+              
+            }
+          },
+          "parent" : 3,
+          "sent" : [
+            2
+          ],
+          "received" : [
+            2,
+            3
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 26,
+          "local" : 4,
+          "lamport" : 26
+        },
+        "node" : 5,
+        "cause" : {
+          "Fire" : {
+            "node" : 5,
+            "action" : {
+              "Pass" : {
+                "to" : 3
+              }
+            }
+          }
+        },
+        "rule" : "pass-to-parent",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Done" : {
+              
+            }
+          },
+          "parent" : 3,
+          "sent" : [
+            2,
+            3
+          ],
+          "received" : [
+            2,
+            3
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+          {
+            "from" : 5,
+            "to" : 3,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 26,
+          "local" : 4,
+          "lamport" : 26
+        },
+        "env" : {
+          "id" : {
+            "from" : 5,
+            "to" : 3,
+            "seq" : 0
+          },
+          "msg" : {
+            "Token" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 27,
+          "local" : 3,
+          "lamport" : 27
+        },
+        "node" : 3,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 5,
+              "to" : 3,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "token-back",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Holding" : {
+              
+            }
+          },
+          "parent" : 1,
+          "sent" : [
+            5
+          ],
+          "received" : [
+            1,
+            5
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 28,
+          "local" : 4,
+          "lamport" : 28
+        },
+        "node" : 3,
+        "cause" : {
+          "Fire" : {
+            "node" : 3,
+            "action" : {
+              "Pass" : {
+                "to" : 1
+              }
+            }
+          }
+        },
+        "rule" : "pass-to-parent",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Done" : {
+              
+            }
+          },
+          "parent" : 1,
+          "sent" : [
+            1,
+            5
+          ],
+          "received" : [
+            1,
+            5
+          ],
+          "degree" : 2
+        },
+        "sent" : [
+          {
+            "from" : 3,
+            "to" : 1,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 28,
+          "local" : 4,
+          "lamport" : 28
+        },
+        "env" : {
+          "id" : {
+            "from" : 3,
+            "to" : 1,
+            "seq" : 0
+          },
+          "msg" : {
+            "Token" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 29,
+          "local" : 7,
+          "lamport" : 29
+        },
+        "node" : 1,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 3,
+              "to" : 1,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "decide",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "phase" : {
+            "Decided" : {
+              
+            }
+          },
+          "parent" : null,
+          "sent" : [
+            2,
+            3,
+            4
+          ],
+          "received" : [
+            2,
+            3,
+            4
+          ],
+          "degree" : 3
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Decided" : {
+        "at" : {
+          "step" : 29,
+          "local" : 7,
+          "lamport" : 29
+        },
+        "node" : 1,
+        "output" : {
+          "TraversalComplete" : {
+            
+          }
+        }
+      }
+    },
+    {
+      "Finished" : {
+        "at" : {
+          "step" : 29,
+          "local" : 0,
+          "lamport" : 0
+        },
+        "outcome" : {
+          "AlgorithmDecided" : {
+            
+          }
+        }
+      }
+    }
+  ]
+}

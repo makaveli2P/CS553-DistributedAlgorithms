@@ -6,6 +6,7 @@ import cs553.core.protocol.ChannelOrder
 import cs553.core.trace.ChannelRecord
 import cs553.core.trace.Chip
 import cs553.core.trace.EdgeStyle
+import cs553.core.trace.Engine
 import cs553.core.trace.EnvelopeId
 import cs553.core.trace.NodeFill
 
@@ -85,6 +86,23 @@ enum Blocked {
 
   /** The timeline shows a past step. */
   case Past
+
+  /** The run is a recording, so nobody can deliver an envelope. */
+  case Recorded
+}
+
+/** Where the run comes from. */
+enum RunSource(val label: String) {
+  case Browser extends RunSource("Browser simulator")
+  case RecordedMediated extends RunSource("Recorded Akka run (mediated)")
+  case RecordedFree extends RunSource("Recorded Akka run (free)")
+
+  /** The Akka engine of a recording, or `None` for the browser simulator. */
+  def engine: Option[Engine] = this match {
+    case Browser          => None
+    case RecordedMediated => Some(Engine.AkkaMediated)
+    case RecordedFree     => Some(Engine.AkkaFreeRun)
+  }
 }
 
 /** One envelope in a mailbox. `at` is its centre and `toward` is the centre of the receiver.
@@ -181,6 +199,9 @@ final case class PresetChoice(name: String, title: String)
 
 /** The choices of the settings, which are always visible. */
 final case class SettingsView(
+    source: RunSource,
+    sources: List[RunSource],
+    recordedLine: Option[String],
     presets: List[PresetChoice],
     preset: Option[String],
     seed: Long,

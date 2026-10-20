@@ -85,6 +85,14 @@ lazy val topologySources = Def.task {
   embedFiles(out, "cs553.core.registry", "TopologyFiles", files)
 }
 
+// The recorded Akka runs (seed 1) go into main code, so that the browser can replay them.
+lazy val recordingSources = Def.task {
+  val dir = (LocalRootProject / baseDirectory).value / "fixtures" / "traces"
+  val files = (dir ** "*-akka-*-1.json").get.flatMap(f => IO.relativize(dir, f).map(k => (k, f)))
+  val out = (Compile / sourceManaged).value / "cs553" / "core" / "registry" / "RecordingFiles.scala"
+  embedFiles(out, "cs553.core.registry", "RecordingFiles", files)
+}
+
 lazy val goldenSources = Def.task {
   val dir = (LocalRootProject / baseDirectory).value / "fixtures" / "traces"
   val files = (dir ** "*.json").get.flatMap(f => IO.relativize(dir, f).map(k => (k, f)))
@@ -106,6 +114,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       Dependencies.scalatestplusScalacheck.value
     ),
     Compile / sourceGenerators += topologySources.taskValue,
+    Compile / sourceGenerators += recordingSources.taskValue,
     Test / sourceGenerators += goldenSources.taskValue
   )
   // GoldenPromote ends with a non-zero exit code on an error, so it runs in its own JVM.

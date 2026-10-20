@@ -6,7 +6,7 @@ Each algorithm is one pure `Protocol`: a set of functions that take a state and 
 |---|---|---|---|
 | Simulator | Browser and JVM | A seed, a script, or the learner | Ready |
 | Mediated Akka engine | JVM (`modules/actors`) | The Controller, with a seed or a script | Ready (M3) |
-| Free-run Akka engine | JVM (`modules/actors`) | The Akka dispatcher | Milestone M7 |
+| Free-run Akka engine | JVM (`modules/actors`) | The Akka dispatcher | Ready (M7) |
 
 ## The Simulator
 
@@ -68,9 +68,9 @@ Akka keeps the order of the messages from one sender to one receiver. Akka does 
 
 If the Controller starts the next step too early, the list of legal choices can be incomplete, and the seed can pick a different choice. So the Controller waits for all the reports of the step. Only one step is active at any time. Thus the choices alone define the trace, and the mediated trace is equal to the Simulator trace for the same `RunSpec`. A conformance test checks this for each algorithm, each preset, both channel orders and 20 seeds.
 
-### How a free run is different
+## The free-run Akka engine
 
-In a free run (milestone M7), there is no Controller and there are no channel actors. The nodes send to their peers directly. The Akka dispatcher decides the order of the messages, so two runs can give two different traces. Only the order from one sender to one receiver is fixed.
+In a free run, there is no Controller and there are no channel actors. The nodes send to their peers directly with `!`. The Akka dispatcher decides the order of the messages, so two runs can give two different traces. Only the order from one sender to one receiver is fixed.
 
 | | Mediated run | Free run |
 |---|---|---|
@@ -78,8 +78,49 @@ In a free run (milestone M7), there is no Controller and there are no channel ac
 | Same seed, same trace | Yes | No |
 | Messages | Real `!`, through channel actors | Real `!`, directly to the peer |
 | Who knows that the network is quiet | The Controller | Nobody |
+| When the run ends | At quiescence, a decision or the step limit | At the first decision or the step limit |
 
 A mediated run lets you replay and study one schedule. A free run shows what a real system does.
+
+### The actors
+
+`FreeRun` is the root of one run. It spawns these actors as its children:
+
+- **One node actor for each process** (`free-node-3`). The node holds the refs of its out-neighbours and sends to them directly. For each message or action, it calls the pure `Protocol` and gives the result to `Effects.of`, the same function as the other engines. Then it sends the report to the Recorder, and after that it sends the envelopes.
+- **One Recorder** (`recorder`). It gets the reports of all nodes and builds the trace. It is not a node and it does not control the run.
+
+The nodes fire their own spontaneous actions. After the start, and after each step, a node sends itself one `Next` message while it has an action. It chooses the action with its own seeded generator. No global scheduler fires an action.
+
+### Time stamps
+
+No actor knows the global step. So each node gives each of its steps two numbers:
+
+- **A local counter.** It grows by one for each step of the node.
+- **A Lamport clock.** A node that sends an envelope puts its Lamport time in the envelope. A node that receives an envelope sets its own time to the larger of the two times, plus one.
+
+The Recorder sorts the steps by Lamport time, then by node, then by local counter. A send has a lower Lamport time than its receive. So each `Sent` comes before its delivery, and the steps of one node keep their order. Then the Recorder numbers the steps from 1. This order does not depend on the order in which the reports arrive. The `EnvelopeId` of a `Sent` and the `EnvelopeId` in the cause of the delivery pair each arrow of the space-time view.
+
+### Why the run ends at the first decision
+
+Nobody sees the whole network. A node cannot know that all channels are empty and that all other nodes are idle. This is the lesson of the free run: **a real system needs termination detection**.
+
+So the engine uses two other ends:
+
+- **The first decision.** The stop rule is `AtFirstDecision`. When a node decides, the Recorder ends the run. The trace stops at that step. Envelopes that were still in transit stay as `Sent` events without a delivery.
+- **The step limit.** When the Recorder has as many steps as the limit of the `RunSpec`, it ends the run with the outcome `StepLimit`.
+
+A silence timeout in the Recorder is only a failure guard. A run with no decision and no step budget left does not end by itself, and then the run fails.
+
+### A free run is a legal schedule
+
+A free-run trace is not exact, but it follows the rules of the pure model. The tests use this fact. For each algorithm, they do 10 free runs and check these properties:
+
+- Each delivery has an earlier `Sent` with the same `EnvelopeId`, and its Lamport time is higher.
+- On each node, the local counter grows by one and the Lamport time grows.
+- `Simulator.replay` of the choices of the run gives the same events. So the order that the dispatcher picked was a legal order for the Simulator.
+- The invariant of the algorithm holds in each world of the replay.
+
+The tests do not compare a free run with an exact trace, because the next run can differ.
 
 ## Decided and Quiescent
 
@@ -94,10 +135,19 @@ When a `Protocol` function gets an illegal input, it returns `Left(ProtocolError
 
 ## Record an Akka run
 
-The CLI runs the mediated engine and writes the trace as JSON:
+The CLI runs an Akka engine and writes the trace as JSON:
 
 ```sh
 sbt "cli/run record --engine mediated --alg echo --preset inputEcho --seed 7 --out echo.json"
+sbt "cli/run record --engine free --alg echo --preset inputEcho --seed 1 --out echo-free.json"
 ```
 
-`sbt goldenPromote` records each golden case to `fixtures/traces/<alg>/<preset>-akka-mediated-<seed>.json`. These commands need `AKKA_REPO_TOKEN`. The web pages do not use the recorded traces yet.
+`sbt goldenPromote` records each golden case to `fixtures/traces/<alg>/<preset>-akka-mediated-<seed>.json`. These commands need `AKKA_REPO_TOKEN`.
+
+A free run is different each time, so `goldenPromote` does not write it. The files `fixtures/traces/<alg>/<preset>-akka-free-1.json` come from the `record --engine free` command above. Record them again only when you want a new example.
+
+## Replay a recording in the browser
+
+The build embeds the recorded runs with seed 1 (the files that end in `-akka-mediated-1.json` and `-akka-free-1.json`). In the settings of the sandbox, **Source** has three choices: "Browser simulator", "Recorded Akka run (mediated)" and "Recorded Akka run (free)".
+
+A recording is a legal schedule of the pure model. So the browser replays its choices with the Simulator and shows the same events. The browser does not contain a second copy of the algorithm. You can scrub and play a recording. You cannot deliver an envelope or fire an action, and the settings of the topology, the seed and the order are off. The page says: "This is a recording of real Akka actors."

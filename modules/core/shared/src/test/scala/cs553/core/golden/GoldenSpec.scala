@@ -64,7 +64,11 @@ final class GoldenSpec extends AnyFunSuite {
 
   test("each file in fixtures/traces belongs to a golden case") {
     val known = Goldens.cases.flatMap(c => List(c.path, c.mediatedPath)).toSet
-    val stale = committed.keySet.diff(known).toList.sorted
+    // A free Akka run is different each time, so `goldenPromote` does not write it. The file
+    // `<alg>/<preset>-akka-free-<n>.json` is an example that `cli record --engine free` wrote.
+    val freePrefixes = Goldens.cases.map(c => s"${c.algorithm.id.value}/${c.preset}-akka-free-")
+    val isFree = (path: String) => freePrefixes.exists(path.startsWith)
+    val stale = committed.keySet.diff(known).filterNot(isFree).toList.sorted
     assert(stale.isEmpty, s"remove these files or add a case to Goldens: ${stale.mkString(", ")}")
   }
 

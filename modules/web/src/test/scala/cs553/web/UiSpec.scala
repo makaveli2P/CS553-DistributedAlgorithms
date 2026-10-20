@@ -12,11 +12,12 @@ import cs553.core.trace.Policy
 import cs553.core.trace.TraceEvent
 import cs553.core.world.Simulator
 import cs553.core.world.World
+import org.scalatest.OptionValues
 import org.scalatest.funsuite.AnyFunSuite
 
 import scala.annotation.tailrec
 
-final class UiSpec extends AnyFunSuite {
+final class UiSpec extends AnyFunSuite with OptionValues {
 
   private def open(id: String): UiState =
     Ui.update(Ui.initial, UiEvent.Navigate(Route.Open(AlgorithmId(id))))
@@ -437,6 +438,48 @@ final class UiSpec extends AnyFunSuite {
               .contains(s"${n.actions.size} actions")
           )
         }
+      }
+    }
+  }
+
+  test("a recorded Akka run replays read-only: scrub and play work, deliver and choose do not") {
+    List(RunSource.RecordedMediated, RunSource.RecordedFree).foreach { source =>
+      Registry.all.foreach { entry =>
+        val start = Ui.update(Ui.initial, UiEvent.Navigate(Route.Open(entry.id)))
+        val rec = Ui.update(start, UiEvent.ChooseSource(source))
+        val s0 = session(rec).value
+        assert(s0.recorded, (entry.id, source))
+        assert(s0.last > 0 && s0.cursor == 0 && s0.finished, (entry.id, source))
+        assert(Ui.screen(rec).flatMap(_.primary).map(_.label) == Some("Next step"))
+        assert(Ui.screen(rec).map(_.settings.source) == Some(source))
+        assert(
+          Ui.screen(rec).exists(_.settings.recordedLine.exists(_.contains("real Akka actors")))
+        )
+        val mid = Ui.update(rec, UiEvent.Seek(s0.last / 2))
+        val frame = Ui.screen(mid).value.frame
+        assert(frame.nodes.forall(_.actions.isEmpty))
+        assert(frame.envelopes.forall(_.blocked.contains(Blocked.Recorded)))
+        assert(frame.envelopes.forall(!_.next))
+        // Deliver, Fire, ContinueHere and the settings change nothing.
+        val ids = frame.envelopes.map(_.id)
+        val tried = (ids.map(UiEvent.Deliver(_)) ++ List(
+          UiEvent.Fire(NodeId(0), 0),
+          UiEvent.ContinueHere,
+          UiEvent.ChooseSeed(9),
+          UiEvent.ChoosePreset("none"),
+          UiEvent.ChooseOrder(cs553.core.protocol.ChannelOrder.AnyOrder)
+        )).foldLeft(mid)(Ui.update)
+        assert(session(tried).map(_.sim.run) == session(mid).map(_.sim.run))
+        assert(session(tried).map(_.cursor) == session(mid).map(_.cursor))
+        // Next step moves one step. At the end, the primary action replays from the start.
+        val next = Ui.update(mid, UiEvent.Forward)
+        assert(session(next).map(_.cursor) == Some(s0.last / 2 + 1))
+        val end = Ui.update(rec, UiEvent.Seek(s0.last))
+        assert(Ui.screen(end).flatMap(_.primary).map(_.label) == Some("Replay from the start"))
+        assert(session(Ui.update(end, UiEvent.Restart)).map(_.cursor) == Some(0))
+        // The browser simulator comes back with the first source.
+        val back = Ui.update(rec, UiEvent.ChooseSource(RunSource.Browser))
+        assert(session(back).exists(!_.recorded))
       }
     }
   }
