@@ -131,7 +131,8 @@ lazy val actors = project
 
 lazy val cli = project
   .in(file("modules/cli"))
-  .dependsOn(actors)
+  // The test code of cli reads the golden cases from the test code of core (GoldenRecord).
+  .dependsOn(actors, coreJVM % "test->test")
   .settings(commonSettings)
   .settings(akkaTokenGate)
   .settings(
@@ -139,7 +140,9 @@ lazy val cli = project
     libraryDependencies ++= Seq(Dependencies.logback, Dependencies.scalatest.value),
     run / fork := true,
     // Paths on the command line are relative to the repository root.
-    run / baseDirectory := (LocalRootProject / baseDirectory).value
+    run / baseDirectory := (LocalRootProject / baseDirectory).value,
+    // GoldenRecord ends with a non-zero exit code on an error, so it runs in its own JVM.
+    Test / run / fork := true
   )
 
 lazy val web = project
@@ -163,8 +166,9 @@ lazy val web = project
   )
 
 // Coding rule 30: only this task writes the golden traces in fixtures/traces.
+// With AKKA_REPO_TOKEN, it also records each case with the mediated Akka engine (cli record).
 lazy val goldenPromote =
-  taskKey[Unit]("Simulates each golden case and writes its trace to fixtures/traces")
+  taskKey[Unit]("Simulates (and records in Akka) each golden case and writes it to fixtures/traces")
 
 lazy val tokenFreeModules: Seq[ProjectReference] = Seq(coreJVM, coreJS, web)
 lazy val akkaModules: Seq[ProjectReference] = Seq(actors, cli)
@@ -177,6 +181,15 @@ lazy val root = project
     publish / skip := true,
     goldenPromote := Def.taskDyn {
       val root = (LocalRootProject / baseDirectory).value
-      (coreJVM / Test / runMain).toTask(s" cs553.core.golden.GoldenPromote $root")
+      val simulate = (coreJVM / Test / runMain).toTask(s" cs553.core.golden.GoldenPromote $root")
+      if (akkaRepoToken.isEmpty) {
+        Def.task {
+          simulate.value
+          streams.value.log
+            .warn(akkaTokenMessage + " goldenPromote did not record the Akka traces.")
+        }
+      } else {
+        Def.sequential(simulate, (cli / Test / runMain).toTask(s" cs553.cli.GoldenRecord $root"))
+      }
     }.value
   )

@@ -15,6 +15,12 @@ object Goldens {
 
     /** The path under `fixtures/traces`: `<alg>/<topology>-simulator-<seed>.json`. */
     def path: String = s"${algorithm.id.value}/$preset-simulator-$seed.json"
+
+    /** The path of the same run, recorded by the mediated Akka engine:
+      * `<alg>/<topology>-akka-mediated-<seed>.json`. `sbt goldenPromote` writes it with the CLI
+      * when `AKKA_REPO_TOKEN` is set.
+      */
+    def mediatedPath: String = s"${algorithm.id.value}/$preset-akka-mediated-$seed.json"
   }
 
   val cases: List[Case] = List(

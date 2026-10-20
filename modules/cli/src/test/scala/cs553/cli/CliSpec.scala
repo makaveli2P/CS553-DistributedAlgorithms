@@ -33,6 +33,7 @@ final class CliSpec extends AnyFunSuite with EitherValues {
   private def simulate(line: String): SimulateArgs = {
     Args.parse(line.split(" ").toList).value match {
       case Command.Simulate(args) => args
+      case Command.Record(_)      => fail(s"'$line' parses as record")
       case Command.Help           => fail(s"'$line' parses as help")
     }
   }

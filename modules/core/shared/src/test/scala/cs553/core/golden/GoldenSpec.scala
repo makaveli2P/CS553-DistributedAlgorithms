@@ -1,5 +1,6 @@
 package cs553.core.golden
 
+import cs553.core.trace.Engine
 import cs553.core.trace.TraceEvent
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -28,8 +29,41 @@ final class GoldenSpec extends AnyFunSuite {
     }
   }
 
+  Goldens.cases.foreach { c =>
+    test(s"the recorded Akka trace ${c.mediatedPath} equals the Simulator golden trace") {
+      val alg = c.algorithm.algorithm
+      (committed.get(c.path), committed.get(c.mediatedPath)) match {
+        case (_, None) =>
+          fail(
+            s"fixtures/traces/${c.mediatedPath} is missing. Run `sbt goldenPromote` with " +
+              "AKKA_REPO_TOKEN set to record it."
+          )
+        case (None, Some(_))                 => fail(s"fixtures/traces/${c.path} is missing")
+        case (Some(simText), Some(akkaText)) =>
+          val pair = for {
+            sim <- alg.readTrace(simText)
+            akka <- alg.readTrace(akkaText)
+          } yield (sim, akka)
+          assert(
+            pair.isRight,
+            pair.left.map(_.toList.map(_.render).mkString("; ")).left.getOrElse("")
+          )
+          pair.foreach { case (sim, akka) =>
+            val engines = akka.trace.collect { case TraceEvent.Started(_, e, _) => e }
+            assert(engines == Vector(Engine.AkkaMediated))
+            val normalized = akka.trace.map {
+              case TraceEvent.Started(spec, _, initial) =>
+                TraceEvent.Started(spec, Engine.Simulator, initial)
+              case other => other
+            }
+            assert(normalized == sim.trace)
+          }
+      }
+    }
+  }
+
   test("each file in fixtures/traces belongs to a golden case") {
-    val known = Goldens.cases.map(_.path).toSet
+    val known = Goldens.cases.flatMap(c => List(c.path, c.mediatedPath)).toSet
     val stale = committed.keySet.diff(known).toList.sorted
     assert(stale.isEmpty, s"remove these files or add a case to Goldens: ${stale.mkString(", ")}")
   }

@@ -33,6 +33,7 @@ Run these commands from the repository root.
 | Test the Akka modules (token) | `sbt actors/test` |
 | Show the CLI usage (token) | `sbt cli/run` |
 | Simulate a run and write its trace (token) | `sbt "cli/run simulate --alg echo --topology fixtures/topologies/inputEcho.dot --initiator 1 --seed 7 --out trace.json"` |
+| Record a mediated Akka run (token) | `sbt "cli/run record --engine mediated --alg echo --preset inputEcho --seed 7 --out trace.json"` |
 | Run all checks before a commit | `sbt scalafmtCheckAll "scalafixAll --check" test` |
 
 For the web page, run these commands in `modules/web`:
@@ -49,11 +50,13 @@ The Vite plugin calls `sbt` itself. Make sure that `sbt` and JDK 21 are on the `
 
 A golden trace is a committed Simulator trace in `fixtures/traces/<alg>/<topology>-simulator-<seed>.json`. The list of golden cases is in `modules/core/shared/src/test/scala/cs553/core/golden/Goldens.scala`. Each case names an algorithm of the registry, a topology preset and a seed.
 
-`GoldenSpec` simulates each case again on the JVM and in JavaScript, and compares the result with the committed file. When a trace differs, the test gives the first line that is different.
+Each case also has a recorded trace of the mediated Akka engine in `fixtures/traces/<alg>/<topology>-akka-mediated-<seed>.json`.
+
+`GoldenSpec` simulates each case again on the JVM and in JavaScript, and compares the result with the committed file. When a trace differs, the test gives the first line that is different. `GoldenSpec` also checks that each recorded Akka trace is equal to the Simulator trace, except for the engine field.
 
 When a change of behavior is intended, do these steps:
 
-1. Run `sbt goldenPromote`. The task writes each golden trace again.
+1. Run `sbt goldenPromote` with `AKKA_REPO_TOKEN` set. The task writes each Simulator trace again, and then records each case with the CLI `record` command. Without the token, the task writes only the Simulator traces.
 2. Read the diff of `fixtures/traces` with `git diff`.
 3. Explain the diff in the commit message (coding rule 30).
 

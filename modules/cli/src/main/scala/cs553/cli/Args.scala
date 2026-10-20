@@ -1,5 +1,6 @@
 package cs553.cli
 
+import cs553.core.ids.AlgorithmId
 import cs553.core.ids.NodeId
 import cs553.core.protocol.ChannelOrder
 
@@ -32,9 +33,26 @@ final case class SimulateArgs(
     stepLimit: Int
 )
 
+/** The Akka engine of `record`. */
+enum RecordEngine {
+
+  /** The mediated engine: channel actors and a Controller that releases one step at a time. */
+  case Mediated
+}
+
+/** The arguments of `record`: one registry algorithm on one of its presets. */
+final case class RecordArgs(
+    engine: RecordEngine,
+    alg: AlgorithmId,
+    preset: String,
+    seed: Long,
+    out: Option[String]
+)
+
 /** One CLI command. */
 enum Command {
   case Simulate(args: SimulateArgs)
+  case Record(args: RecordArgs)
   case Help
 }
 
@@ -44,8 +62,12 @@ object Args {
   val usage: String =
     """Usage:
       |  simulate --alg echo|chang-roberts (--topology FILE.dot | --ring N) [options]
+      |  record --engine mediated --alg ID --preset NAME [--seed N] [--out FILE.json]
       |
-      |Options:
+      |simulate runs the Simulator. record runs the mediated Akka engine on a preset of the
+      |algorithm registry, and writes the same trace format.
+      |
+      |Options of simulate:
       |  --seed N         the seed of the scheduler (default 0)
       |  --order O        fifo or any (default: the default order of the algorithm)
       |  --initiator N    make node N the only initiator
@@ -54,22 +76,27 @@ object Args {
       |
       |Examples:
       |  simulate --alg echo --topology fixtures/topologies/inputEcho.dot --initiator 1 --seed 7
-      |  simulate --alg chang-roberts --ring 6 --seed 7 --out ring.json""".stripMargin
+      |  simulate --alg chang-roberts --ring 6 --seed 7 --out ring.json
+      |  record --engine mediated --alg chang-roberts --preset ring-6 --seed 7 --out ring.json""".stripMargin
 
-  private val keys: Set[String] =
+  private val simulateKeys: Set[String] =
     Set("--alg", "--topology", "--ring", "--seed", "--order", "--initiator", "--steps", "--out")
+
+  private val recordKeys: Set[String] = Set("--engine", "--alg", "--preset", "--seed", "--out")
 
   def parse(args: List[String]): Either[String, Command] = {
     args match {
       case Nil                             => Right(Command.Help)
       case ("help" | "--help" | "-h") :: _ => Right(Command.Help)
-      case "simulate" :: rest              => options(rest, Map.empty).flatMap(simulate)
-      case other :: _                      => Left(s"unknown command '$other'")
+      case "simulate" :: rest => options(simulateKeys, rest, Map.empty).flatMap(simulate)
+      case "record" :: rest   => options(recordKeys, rest, Map.empty).flatMap(record)
+      case other :: _         => Left(s"unknown command '$other'")
     }
   }
 
   @tailrec
   private def options(
+      keys: Set[String],
       args: List[String],
       acc: Map[String, String]
   ): Either[String, Map[String, String]] = {
@@ -77,8 +104,9 @@ object Args {
       case Nil                             => Right(acc)
       case key :: _ if !keys.contains(key) => Left(s"unknown option '$key'")
       case key :: _ if acc.contains(key)   => Left(s"the option $key occurs two times")
-      case key :: value :: rest if !value.startsWith("--") => options(rest, acc.updated(key, value))
-      case key :: _                                        => Left(s"the option $key needs a value")
+      case key :: value :: rest if !value.startsWith("--") =>
+        options(keys, rest, acc.updated(key, value))
+      case key :: _ => Left(s"the option $key needs a value")
     }
   }
 
@@ -96,11 +124,7 @@ object Args {
         case (Some(_), Some(_)) => Left("use --topology or --ring, not both")
         case (None, None)       => Left("the option --topology or --ring is necessary")
       }
-      seed <- opts
-        .get("--seed")
-        .fold[Either[String, Long]](Right(0L))(s =>
-          Try(s.toLong).toOption.toRight(s"--seed needs an integer, not '$s'")
-        )
+      seed <- seed(opts)
       order <- opts.get("--order") match {
         case None         => Right(None)
         case Some("fifo") => Right(Some(ChannelOrder.Fifo))
@@ -116,6 +140,28 @@ object Args {
     } yield Command.Simulate(
       SimulateArgs(alg, source, seed, order, initiator, opts.get("--out"), steps)
     )
+  }
+
+  private def record(opts: Map[String, String]): Either[String, Command] = {
+    for {
+      engine <- opts.get("--engine") match {
+        case Some("mediated") => Right(RecordEngine.Mediated)
+        case Some("free")     => Left("the free-run engine comes in milestone M7; use mediated")
+        case Some(other)      => Left(s"unknown engine '$other' (use mediated)")
+        case None             => Left("the option --engine is necessary")
+      }
+      alg <- opts.get("--alg").toRight("the option --alg is necessary")
+      preset <- opts.get("--preset").toRight("the option --preset is necessary")
+      seed <- seed(opts)
+    } yield Command.Record(RecordArgs(engine, AlgorithmId(alg), preset, seed, opts.get("--out")))
+  }
+
+  private def seed(opts: Map[String, String]): Either[String, Long] = {
+    opts
+      .get("--seed")
+      .fold[Either[String, Long]](Right(0L))(s =>
+        Try(s.toLong).toOption.toRight(s"--seed needs an integer, not '$s'")
+      )
   }
 
   private def int(key: String, text: String): Either[String, Int] = {
