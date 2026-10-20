@@ -121,6 +121,7 @@ object Canvas {
       s.cls("node"),
       s.cls("node--current") <-- n.map(_.current),
       s.cls("node--decided") <-- n.map(_.decided),
+      s.cls("node--first") <-- n.map(_.first),
       s.g(
         s.cls("node-hit"),
         pressable(Val(s"Node ${id.value}"), Val(UiEvent.SelectNode(id)), dispatch),

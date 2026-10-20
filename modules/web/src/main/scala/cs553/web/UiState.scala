@@ -79,7 +79,7 @@ object Ui {
 
   def update(state: UiState, event: UiEvent): UiState = {
     event match {
-      case UiEvent.Navigate(route) => navigate(route)
+      case UiEvent.Navigate(route) => navigate(route, measured(state))
       case other                   =>
         state.page match {
           case Page.Home(_)                => state
@@ -93,14 +93,22 @@ object Ui {
     }
   }
 
-  private def navigate(route: Route): UiState = route match {
+  /** The measured size of the canvas. A hash change from one sandbox to another keeps the same svg
+    * element, so the ResizeObserver sends no new `Resized`, and the new view must keep the size.
+    */
+  private def measured(state: UiState): Size = state.page match {
+    case Page.Sandbox(_, view) => view.size
+    case Page.Home(_)          => Layout.defaultSize
+  }
+
+  private def navigate(route: Route, size: Size): UiState = route match {
     case Route.Home     => initial
     case Route.Open(id) =>
       Registry.find(id) match {
         case None =>
           val text = s"No algorithm has the id '${id.value}'. Pick an algorithm to start a run."
           UiState(Page.Home(Some(Notice(text, text))))
-        case Some(any) => fromResult(Session.open(any.algorithm))
+        case Some(any) => fromResult(Session.open(any.algorithm), size)
       }
     case Route.Replay(link, step) =>
       val found =
@@ -109,7 +117,7 @@ object Ui {
         }
       found match {
         case Left(error) => UiState(Page.Home(Some(Notice(damagedLink, error))))
-        case Right(any)  => fromResult(Session.fromLink(any.algorithm, link, step))
+        case Right(any)  => fromResult(Session.fromLink(any.algorithm, link, step), size)
       }
   }
 
@@ -117,9 +125,11 @@ object Ui {
   val damagedLink: String =
     "This link is damaged or from another version. Pick an algorithm to start a new run."
 
-  private def fromResult(result: Either[String, Session[?, ?, ?, ?]]): UiState = result match {
-    case Left(error)    => UiState(Page.Home(Some(Notice(damagedLink, error))))
-    case Right(session) => UiState(Page.Sandbox(session, View.initial))
+  private def fromResult(result: Either[String, Session[?, ?, ?, ?]], size: Size): UiState = {
+    result match {
+      case Left(error)    => UiState(Page.Home(Some(Notice(damagedLink, error))))
+      case Right(session) => UiState(Page.Sandbox(session, View.initial.copy(size = size)))
+    }
   }
 
   private def sandbox(session: Session[?, ?, ?, ?], view: View, event: UiEvent): Page = {

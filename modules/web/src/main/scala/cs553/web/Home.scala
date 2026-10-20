@@ -8,7 +8,8 @@ import cs553.core.registry.Registry
 import org.scalajs.dom
 
 /** The home screen. Its one question: which algorithm to open. Each algorithm is one card with a
-  * picture of the end of its default run. The algorithms that are not ready are muted cards.
+  * picture of the end of its default run. The algorithms that are not ready are small muted tiles
+  * with no picture, under a faint "Later" label, so the ready cards hold the visual weight.
   */
 object Home {
 
@@ -44,17 +45,16 @@ object Home {
                 span(cls("family"), alg.family.toString)
               )
             )
-          },
+          }
+        ),
+        p(cls("later-label"), "Later"),
+        div(
+          cls("cards", "cards--later"),
           later.map { entry =>
             div(
               cls("card", "card--later"),
               aria.disabled(true),
-              placeholder,
-              div(
-                cls("card-label"),
-                span(cls("card-name"), entry.name),
-                span(cls("family"), "Soon")
-              )
+              span(cls("card-name"), entry.name)
             )
           }
         )

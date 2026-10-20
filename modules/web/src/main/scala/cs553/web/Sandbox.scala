@@ -62,16 +62,7 @@ object Sandbox {
             div(
               cls("lines"),
               p(cls("status"), text <-- frame.map(_.status)),
-              child.maybe <-- frame.map(
-                _.decidedAt.map(n => p(cls("fact"), s"Algorithm decided at step $n"))
-              ),
-              child.maybe <-- frame.map(_.quiescentAt.map { n =>
-                p(
-                  cls("fact"),
-                  s"Network quiescent at step $n ",
-                  span(cls("aside"), "(only an observer knows this)")
-                )
-              }),
+              child.maybe <-- frame.map(facts),
               child.maybe <-- frame.map(
                 _.limitAt.map(n => p(cls("fact"), s"Run stopped at the step limit, step $n"))
               ),
@@ -87,6 +78,24 @@ object Sandbox {
         )
       )
     )
+  }
+
+  /** One short line with a key for each tick on the slider, or nothing. */
+  private def facts(frame: Frame): Option[HtmlElement] = {
+    val keys = List(
+      frame.decidedAt.map { n =>
+        span(cls("key"), span(cls("dot", "tick--decided")), s"decided at step $n")
+      },
+      frame.quiescentAt.map { n =>
+        span(
+          cls("key"),
+          title("Only an observer of the whole network knows this."),
+          span(cls("dot", "tick--quiescent")),
+          s"quiescent at step $n"
+        )
+      }
+    ).flatten
+    Option.when(keys.nonEmpty)(p(cls("facts"), keys))
   }
 
   /** Copies the URL. The clipboard exists only in a secure context, and the write can fail, so the

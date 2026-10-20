@@ -269,6 +269,16 @@ final class UiSpec extends AnyFunSuite {
     assert(frame.exists(_.nodes.exists(n => n.lines == List("asleep", "uid 4"))))
   }
 
+  test("regression: a hash change from one sandbox to another keeps the measured size") {
+    val phone = apply(open("chang-roberts"), UiEvent.Resized(Size(356, 557)))
+    val echo = Ui.update(phone, UiEvent.Navigate(Route.Open(AlgorithmId("echo"))))
+    assert(Ui.screen(echo).map(_.frame.box.width) == Some(356.0))
+    assert(Ui.screen(echo).map(_.frame.box.height) == Some(557.0))
+    val link = Ui.route(echo)
+    val back = Ui.update(echo, UiEvent.Navigate(link))
+    assert(Ui.screen(back).map(_.frame.box.width) == Some(356.0))
+  }
+
   test("the node panel lists the envelopes that wait for the node") {
     val woke = apply(open("echo"), UiEvent.Forward, UiEvent.SelectNode(NodeId(2)))
     Ui.screen(woke).flatMap(_.panel) match {

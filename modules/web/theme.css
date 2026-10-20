@@ -53,7 +53,7 @@ a { color: inherit; text-decoration: none; }
 button, select, input { font: inherit; color: inherit; }
 
 .page {
-  max-width: 980px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 24px 48px;
 }
@@ -83,8 +83,9 @@ h1 {
 /* Home: one card for each algorithm, with a picture of the end of its default run. */
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
+  max-width: 960px;
 }
 
 .card {
@@ -120,15 +121,14 @@ a.card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 a.card:hover .card-name { color: var(--accent); }
 .family { font-size: 13px; color: var(--muted); }
 
-.card--later { background: transparent; border-style: dashed; }
-.card--later .thumb { background: transparent; }
-.card--later .card-name { color: var(--muted); font-weight: 400; }
-.card--later .family { color: var(--faint); }
+.later-label { margin: 32px 0 10px; font-size: 13px; color: var(--faint); }
+.cards--later { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.card--later { padding: 12px 14px; background: transparent; border-style: dashed; border-radius: 10px; }
+.card--later .card-name { font-size: 14px; color: var(--muted); font-weight: 400; }
 
 .notice { color: var(--muted); }
 
 /* Sandbox */
-.page.sandbox { max-width: 1200px; }
 .sandbox h1 { margin: 8px 0 12px; }
 
 /* The canvas, the timeline and the lines on the left; the settings and the inspector on the right. */
@@ -169,6 +169,8 @@ a.card:hover .card-name { color: var(--accent); }
 .node-hit:focus-visible .node-circle { stroke: var(--text); stroke-dasharray: 3 3; }
 
 .node--decided .node-circle { fill: var(--done-soft); stroke: var(--done); }
+.node--first .node-circle { fill: var(--done); stroke: var(--done); }
+.node--first .node-id { fill: #fff; }
 .node--current .node-circle { stroke: var(--accent); stroke-width: 2.5; }
 
 .node-id { font-size: 14px; font-weight: 500; fill: var(--text); pointer-events: none; }
@@ -261,11 +263,28 @@ a.card:hover .card-name { color: var(--accent); }
   min-width: 0;
 }
 
+.track { position: relative; flex: 1; min-width: 60px; margin: 0 6px; display: flex; }
+.tick {
+  position: absolute;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.tick--decided { background: var(--done); }
+.tick--quiescent { background: var(--muted); }
+.facts { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 13px; color: var(--muted); }
+.key { display: inline-flex; align-items: center; gap: 6px; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
 .slider {
+  position: relative;
   flex: 1;
-  min-width: 60px;
+  width: 100%;
+  min-width: 0;
   height: 20px;
-  margin: 0 6px;
+  margin: 0;
   background: transparent;
   -webkit-appearance: none;
   appearance: none;
@@ -302,8 +321,9 @@ a.card:hover .card-name { color: var(--accent); }
 
 .panel dl {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 6px 16px;
+  /* One fixed key column, so that the values of each group in the panel start at the same x. */
+  grid-template-columns: 7.5em minmax(0, 1fr);
+  gap: 6px 12px;
   margin: 0 0 16px;
   font-size: 14px;
 }
@@ -348,12 +368,14 @@ a.card:hover .card-name { color: var(--accent); }
 @media (max-width: 640px) {
   .page { padding: 0 16px 32px; }
   .home h1 { margin-top: 32px; font-size: 20px; }
-  .graph { height: min(66vh, 580px); }
+  .graph { height: min(58vh, 480px); }
   .node-phase { font-size: 12px; }
   .controls { flex-direction: column; align-items: stretch; gap: 10px; }
   .primary { width: 100%; }
   .lines { min-height: calc(3 * 1.5em); }
   .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .cards--later { gap: 8px; }
+  .card--later { padding: 10px 12px; }
   .card { padding: 8px 8px 10px; gap: 8px; }
   .card-label { flex-direction: column; gap: 0; }
   .card-name { font-size: 14px; }

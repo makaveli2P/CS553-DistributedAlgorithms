@@ -35,7 +35,10 @@ final case class LabelSpot(x: Double, firstY: Double, side: LabelSide, actionY: 
   */
 final case class ActionView(index: Int, label: String, next: Boolean)
 
-/** One node at the shown step. `lines` are the parts of the `Inspect` label, one for each line. */
+/** One node at the shown step. `lines` are the parts of the `Inspect` label, one for each line.
+  * `first` is true for the node that decided first up to the shown step: the initiator of a wave or
+  * the leader of an election. The home thumbnail uses the same rule.
+  */
 final case class NodeView(
     id: NodeId,
     at: Point,
@@ -43,6 +46,7 @@ final case class NodeView(
     lines: List[String],
     current: Boolean,
     decided: Boolean,
+    first: Boolean,
     actions: List[ActionView]
 )
 

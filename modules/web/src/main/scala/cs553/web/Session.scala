@@ -305,6 +305,7 @@ final case class Session[S, M, A, O](
     val points = plan.positions
     val active = current
     val decided = decidedNodes
+    val first = shown.collectFirst { case TraceEvent.Decided(_, node, _) => node }
     val next = if live then { nextChoice }
     else { None }
     val nodes = w.states.toList.map { case (node, state) =>
@@ -323,6 +324,7 @@ final case class Session[S, M, A, O](
         alg.inspectState.label(state).split(", ").toList,
         active.contains(node),
         decided.contains(node),
+        first.contains(node),
         actions
       )
     }

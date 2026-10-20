@@ -310,15 +310,16 @@ object CrState {
   given Inspect[CrState] = new Inspect[CrState] {
 
     /** The label has one or two parts. The UI shows each part on its own line. The node id is not
-      * in the label, so the label names the uid.
+      * in the label, so the label names the uid. A follower label is one word: the leader uid is in
+      * `fields`, and the canvas does not repeat it at each node.
       */
     def label(s: CrState): String = s match {
-      case CrState.Asleep(uid)         => s"asleep, uid ${uid.value}"
-      case CrState.Active(uid)         => s"active, uid ${uid.value}"
-      case CrState.Passive(uid)        => uid.fold("passive")(u => s"passive, uid ${u.value}")
-      case CrState.Announcing(uid)     => s"leader (uid ${uid.value}), announcing"
-      case CrState.Leader(uid)         => s"leader (uid ${uid.value})"
-      case CrState.Follower(_, leader) => s"follower, leader is uid ${leader.value}"
+      case CrState.Asleep(uid)     => s"asleep, uid ${uid.value}"
+      case CrState.Active(uid)     => s"active, uid ${uid.value}"
+      case CrState.Passive(uid)    => uid.fold("passive")(u => s"passive, uid ${u.value}")
+      case CrState.Announcing(uid) => s"leader (uid ${uid.value}), announcing"
+      case CrState.Leader(uid)     => s"leader (uid ${uid.value})"
+      case CrState.Follower(_, _)  => "follower"
     }
     def fields(s: CrState): List[(String, String)] = {
       def own(uid: Option[Uid]): String = uid.fold("none")(_.value.toString)
