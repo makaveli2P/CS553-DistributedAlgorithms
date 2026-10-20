@@ -15,3 +15,8 @@ modules/web/dist/
 .idea/
 .vscode/
 .DS_Store
+
+# Local secrets (coding rule 34)
+.env
+.env.*
+.envrc

@@ -22,6 +22,8 @@ object Versions {
   val scalatest = "3.2.20"
 
   // https://repo1.maven.org/maven2/org/scalatestplus/scalacheck-1-18_3/maven-metadata.xml
+  // 3.2.19.0 is the newest release for scalacheck-1-18. It depends on scalatest 3.2.19,
+  // and sbt evicts that to 3.2.20. The 3.2.x releases are binary compatible.
   val scalatestplusScalacheck = "3.2.19.0"
 
   // https://repo1.maven.org/maven2/org/scalacheck/scalacheck_3/maven-metadata.xml

@@ -33,6 +33,12 @@ Global / onLoad := {
   }
 }
 
+// Without the token, a direct call such as `sbt actors/compile` stops in `update`
+// with the same clear line, not with a raw download error.
+lazy val akkaTokenGate: Seq[Setting[?]] =
+  if (akkaRepoToken.isEmpty) { Seq(update := { throw new MessageOnlyException(akkaTokenMessage) }) }
+  else { Seq.empty }
+
 // Settings for every module. Compiler flags come only from sbt-tpolecat (coding rule 31).
 lazy val commonSettings = Seq(
   // Coding rule 12: no implicit conversions.
@@ -56,6 +62,7 @@ lazy val actors = project
   .in(file("modules/actors"))
   .dependsOn(coreJVM)
   .settings(commonSettings)
+  .settings(akkaTokenGate)
   .settings(
     name := "cs553-actors",
     libraryDependencies ++= Seq(
@@ -70,6 +77,7 @@ lazy val cli = project
   .in(file("modules/cli"))
   .dependsOn(actors)
   .settings(commonSettings)
+  .settings(akkaTokenGate)
   .settings(
     name := "cs553-cli",
     libraryDependencies += Dependencies.logback,

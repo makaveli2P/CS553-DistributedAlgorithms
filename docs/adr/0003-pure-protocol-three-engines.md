@@ -15,7 +15,7 @@ The visualizer must run the algorithms in the browser, where no JVM and no Akka 
 Each algorithm is one instance of the pure type class `Protocol[S, M, A, O]` in `core`. Three engines run it and write one trace format (`TraceEvent`):
 
 1. The **Simulator** in `core`, for the JVM and for JS.
-2. The **mediated Akka engine**: real actors and real `!`, with delivery gated by channel actors (ADR-0004).
+2. The **mediated Akka engine**: real actors and real `!`. Channel actors gate the delivery (ADR-0004).
 3. The **free-run Akka engine**: it records the real non-determinism of the dispatcher.
 
 A conformance test makes engine 2 give the same trace as engine 1 for the same choices. A `RunSpec` defines a run completely, so a URL can replay it.

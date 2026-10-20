@@ -21,10 +21,19 @@ jobs:
           java-version: "21"
           cache: sbt
       - uses: sbt/setup-sbt@v1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: modules/web/package-lock.json
       - name: Format, lint, test core, link web
         run: >-
           sbt scalafmtSbtCheck scalafmtCheckAll "scalafixAll --check"
           coreJVM/test coreJS/test web/fastLinkJS
+      # pages.yml runs only on master. This step finds a broken Vite build before the merge.
+      - name: Build the site with Vite
+        working-directory: modules/web
+        run: npm ci && npm run build
 
   # Job-level `if` cannot read `secrets`, so this job tells the next job if the token exists.
   akka-token:

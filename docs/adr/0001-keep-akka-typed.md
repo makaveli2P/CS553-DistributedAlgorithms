@@ -4,11 +4,11 @@ Date: 2026-10-20
 
 ## Status
 
-Accepted
+Proposed. It becomes Accepted when `sbt actors/test` passes with the token on Scala 3.9.0.
 
 ## Context
 
-The college project used Akka 2.6 classic and typed actors on Scala 2.13. The rewrite must teach the actor model with a real actor runtime. The user chose Akka. Akka 2.10 has the same Typed API as Akka 2.6. Akka 2.6.21 is end of life.
+The college project used Akka 2.6.18 classic actors on Scala 2.13.8. Its build declared `akka-actor-typed`, but the code used only classic actors. The rewrite must teach the actor model with a real actor runtime. The user chose Akka. Akka 2.10 has the same Typed API as Akka 2.6. Akka 2.6.21 is end of life.
 
 The rewrite uses Scala 3.9.0, the current LTS release. Akka 2.10.24 publishes `_3` artifacts that Scala 3.3.7 builds. A Scala 3.9 compiler reads TASTy from older Scala 3 versions, so the build can use these artifacts.
 

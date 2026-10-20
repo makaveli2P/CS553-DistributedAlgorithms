@@ -13,7 +13,7 @@ Each algorithm is one pure Scala 3 model. The same model runs in three engines: 
 
 This branch is a rewrite of the college project. The original code is at the tag `college-original`.
 
-Milestone M0 is in progress: the build, the CI, the coding rules and the ADRs. The algorithms come in milestones M1 to M7. The descriptions of the algorithms are in [docs/algorithms](docs/algorithms).
+Milestone M0 is in progress: the build, the CI, the coding rules and the ADRs. Milestones M1 to M7 add the algorithms. The descriptions of the algorithms are in [docs/algorithms](docs/algorithms).
 
 ## Modules
 

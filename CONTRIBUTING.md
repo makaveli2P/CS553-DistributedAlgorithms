@@ -13,7 +13,7 @@ Akka 2.10 is available only from the Akka library repository, which needs a free
 
 1. Get a token at https://account.akka.io/token.
 2. Export it in your shell: `export AKKA_REPO_TOKEN=<your token>`.
-3. Optional: export the licence key as `AKKA_LICENSE_KEY`. `modules/actors/src/main/resources/application.conf` reads it.
+3. Optional: export the licence key as `AKKA_LICENSE_KEY`. `modules/actors/src/main/resources/application.conf` reads it. The Akka account page at https://account.akka.io gives the key. M0 did not confirm whether development runs need the key.
 
 Do not commit the token or the licence key.
 
@@ -47,7 +47,17 @@ The Vite plugin calls `sbt` itself. Make sure that `sbt` and JDK 21 are on the `
 
 - `core-web` runs on each push and pull request, also from forks. It needs no token.
 - `akka` runs only when the repository has the secret `AKKA_REPO_TOKEN`.
+- `core-web` also builds the site with Vite, so a pull request cannot break the Pages build.
 - `pages.yml` builds the web module and deploys it to GitHub Pages. It needs no token.
+
+### Maintainer setup
+
+Do these steps one time in the GitHub repository:
+
+1. In GitHub, open Settings > Secrets and variables > Actions.
+2. Add the secret `AKKA_REPO_TOKEN`. Without this secret, the `akka` job does not run.
+3. Optional: add the secret `AKKA_LICENSE_KEY`.
+4. Open Settings > Pages and set Source to "GitHub Actions". Without step 4, the deploy job of `pages.yml` fails.
 
 ## Rules
 

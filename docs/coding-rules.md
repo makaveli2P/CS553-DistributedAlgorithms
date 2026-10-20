@@ -41,7 +41,7 @@
 30. Change golden traces only with `sbt goldenPromote`, and explain the diff in the commit. Reason: a trace diff is a behavior change.
 
 ## Build, format and commits
-31. Set compiler flags only through `tpolecatScalacOptions`. Reason: one source for `-Werror`, `-Wunused:all`, `-Wvalue-discard` and `-Wnonunit-statement` (off in Test).
+31. Set compiler flags only through `tpolecatScalacOptions`. Reason: one source for `-Werror`, `-Wunused:*` (the sbt-tpolecat set), `-Wvalue-discard` and `-Wnonunit-statement` (off in Test).
 32. Use braces. Do not use significant indentation. Reason: scalafmt enforces one style.
 33. Run `sbt scalafmtCheckAll "scalafixAll --check" test` before each commit. Reason: CI runs the same check.
 34. Do not commit `AKKA_REPO_TOKEN` or `AKKA_LICENSE_KEY`. Read them from the environment. Reason: the tokens are personal.
@@ -52,5 +52,5 @@
 These files enforce the rules:
 
 - `.scalafmt.conf`: the Scala 3 dialect with braces. Significant indentation is off.
-- `.scalafix.conf`: `OrganizeImports`, `DisableSyntax` (no `var`, `null`, `return`, `throw` or `while`) and `RemoveUnused` for privates and locals.
-- `build.sbt`: sbt-tpolecat sets the compiler flags. The build removes `-language:implicitConversions` (rule 12) and turns off `-Wnonunit-statement` in `Test`.
+- `.scalafix.conf`: `OrganizeImports`, `DisableSyntax` (no `var`, `null`, `return`, `throw` or `while`, and `scala.collection.mutable` (regex)) and `RemoveUnused` for privates and locals.
+- `build.sbt`: sbt-tpolecat sets the compiler flags. The build removes `-language:implicitConversions` (rule 12) and removes `-Wnonunit-statement` from `Test`.
