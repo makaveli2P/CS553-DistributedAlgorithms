@@ -6,6 +6,14 @@ object Dependencies {
 
   // Cross-built libraries use %%%, so each one needs a setting.
   val scalatest = Def.setting("org.scalatest" %%% "scalatest" % Versions.scalatest % Test)
+  val scalacheck = Def.setting("org.scalacheck" %%% "scalacheck" % Versions.scalacheck % Test)
+  val scalatestplusScalacheck = Def.setting(
+    "org.scalatestplus" %%% "scalacheck-1-18" % Versions.scalatestplusScalacheck % Test
+  )
+
+  // circe brings cats-core. Core uses cats.data.NonEmptyList from it, with no extra dependency.
+  val circeCore = Def.setting("io.circe" %%% "circe-core" % Versions.circe)
+  val circeParser = Def.setting("io.circe" %%% "circe-parser" % Versions.circe)
 
   val laminar = Def.setting("com.raquo" %%% "laminar" % Versions.laminar)
   val scalajsDom = Def.setting("org.scala-js" %%% "scalajs-dom" % Versions.scalajsDom)

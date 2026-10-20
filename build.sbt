@@ -52,7 +52,13 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
   .settings(commonSettings)
   .settings(
     name := "cs553-core",
-    libraryDependencies += Dependencies.scalatest.value
+    libraryDependencies ++= Seq(
+      Dependencies.circeCore.value,
+      Dependencies.circeParser.value,
+      Dependencies.scalatest.value,
+      Dependencies.scalacheck.value,
+      Dependencies.scalatestplusScalacheck.value
+    )
   )
 
 lazy val coreJVM = core.jvm

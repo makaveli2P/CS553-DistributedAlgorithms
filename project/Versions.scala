@@ -30,7 +30,6 @@ object Versions {
   val scalacheck = "1.18.1"
 
   // https://repo1.maven.org/maven2/io/circe/circe-core_3/maven-metadata.xml (newest 0.14.x).
-  // Pinned now for M1. M0 does not use it.
   val circe = "0.14.17"
 
   // https://repo1.maven.org/maven2/ch/qos/logback/logback-classic/maven-metadata.xml (newest 1.5.x)
