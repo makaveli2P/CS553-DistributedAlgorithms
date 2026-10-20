@@ -202,8 +202,9 @@ object Topology {
     * a directed topology.
     *
     * Node ids must be non-negative integers. A node is an initiator when it has the attribute
-    * `initiator=true`, or when its label contains the word `Init` (the college fixtures use
-    * `label=<<b>Init</b>>`). The attribute `uid` gives the `Uid`. The other attributes go to
+    * `initiator=true`, or when its label is the text `Init`, with or without HTML tags (the college
+    * fixtures use `label=<<b>Init</b>>`). A label such as `NonInitiator` or `Initial` does not make
+    * an initiator. The attribute `uid` gives the `Uid`. The other attributes go to
     * `NodeAttrs.extra`.
     */
   def fromDot(source: String): Either[NonEmptyList[TopologyError], Topology] = {
@@ -244,8 +245,11 @@ object Topology {
 
   private val roleKeys: Set[String] = Set("initiator", "uid")
 
+  /** The text of a label without its HTML tags: `<b>Init</b>` gives `Init`. */
+  private def withoutTags(label: String): String = label.replaceAll("<[^<>]*>", "")
+
   private def nodeAttrs(id: NodeId, raw: Map[String, String]): Either[TopologyError, NodeAttrs] = {
-    val labelledInit = raw.get("label").exists(_.contains("Init"))
+    val labelledInit = raw.get("label").exists(label => withoutTags(label).trim == "Init")
     val role = raw.get("initiator") match {
       case Some("true")  => Right(Role.Initiator)
       case Some("false") => Right(Role.NonInitiator)

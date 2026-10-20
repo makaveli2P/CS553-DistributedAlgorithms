@@ -80,4 +80,13 @@ final class TopologySpec extends AnyFunSuite {
     )
     assert(trimmed.flatMap(_.without(Set(NodeId(1), NodeId(2), NodeId(3)))).isLeft)
   }
+
+  test("regression: only the label text Init makes an initiator, not a label that contains Init") {
+    val dot =
+      """digraph { "0" [label=<<b>Init</b>>]; "1" [label="Init"]; "2" [label="NonInitiator"];
+        |"3" [label=<<b>Initial</b>>]; "4" [label=" Init "] }""".stripMargin
+    assert(
+      Topology.fromDot(dot).map(_.initiators.toList) == Right(List(NodeId(0), NodeId(1), NodeId(4)))
+    )
+  }
 }

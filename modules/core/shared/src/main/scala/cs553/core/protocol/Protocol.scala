@@ -72,6 +72,9 @@ enum ProtocolError derives Codec.AsObject {
 
   /** The step sends to a node that is not an out-neighbour. The engine detects this error. */
   case NotANeighbour(to: NodeId)
+
+  /** The state of the node breaks an invariant of the protocol. A valid run never gives it. */
+  case InvariantBroken(detail: String)
 }
 
 /** One distributed algorithm as pure functions.

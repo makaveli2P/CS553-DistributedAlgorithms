@@ -150,7 +150,9 @@ final class EchoSpec extends AnyFunSuite with PropertyBudget with EitherValues {
     }
   }
 
-  test("property: each node ends Echoed, the initiator ends Decided, and each node counts deg") {
+  test(
+    "property: each node ends Echoed, the initiator ends Decided, and each node counts deg of deg"
+  ) {
     forAll(Graphs.connectedAnyInitiator, Gen.long, orders) {
       (topology: Topology, seed: Long, order: ChannelOrder) =>
         val states = finalStates(runEcho(topology, seed, order))
@@ -161,6 +163,7 @@ final class EchoSpec extends AnyFunSuite with PropertyBudget with EitherValues {
           }
           assert(states.get(node).map(_.phase).contains(expected))
           assert(states.get(node).map(_.received).contains(topology.outNeighbours(node).size))
+          assert(states.get(node).map(_.expected).contains(topology.outNeighbours(node).size))
         }
     }
   }
@@ -219,9 +222,9 @@ final class EchoSpec extends AnyFunSuite with PropertyBudget with EitherValues {
 
   test("a token after the echo, a token before Wake and a second Wake are rejected") {
     val ctx = NodeCtx(NodeId(1), SortedSet(NodeId(0)), SortedSet(NodeId(0)))
-    val echoed = EchoState(Role.NonInitiator, EchoPhase.Echoed, Some(NodeId(0)), 1)
-    val idleInitiator = EchoState(Role.Initiator, EchoPhase.Idle, None, 0)
-    val waiting = EchoState(Role.Initiator, EchoPhase.Waiting, None, 0)
+    val echoed = EchoState(Role.NonInitiator, EchoPhase.Echoed, Some(NodeId(0)), 1, 1)
+    val idleInitiator = EchoState(Role.Initiator, EchoPhase.Idle, None, 0, 1)
+    val waiting = EchoState(Role.Initiator, EchoPhase.Waiting, None, 0, 1)
     assert(
       Echo.protocol.onMessage(ctx, echoed, NodeId(0), EchoMsg.Token).left.value match {
         case ProtocolError.UnexpectedMessage(from, _) => from == NodeId(0)
@@ -306,11 +309,17 @@ final class EchoSpec extends AnyFunSuite with PropertyBudget with EitherValues {
   }
 
   test("Inspect gives labels and fields for the state, the message, the action and the output") {
-    val state = EchoState(Role.NonInitiator, EchoPhase.Waiting, Some(NodeId(3)), 2)
-    assert(Inspect[EchoState].label(state) == "waiting, received 2")
+    val state = EchoState(Role.NonInitiator, EchoPhase.Waiting, Some(NodeId(3)), 2, 3)
+    assert(Inspect[EchoState].label(state) == "waiting, received 2 of 3")
     assert(
       Inspect[EchoState].fields(state) ==
-        List("role" -> "NonInitiator", "phase" -> "Waiting", "parent" -> "3", "received" -> "2")
+        List(
+          "role" -> "NonInitiator",
+          "phase" -> "Waiting",
+          "parent" -> "3",
+          "received" -> "2",
+          "expected" -> "3"
+        )
     )
     assert(Inspect[EchoMsg].label(EchoMsg.Token) == "Token")
     assert(Inspect[EchoAction].label(EchoAction.Wake) == "Wake")

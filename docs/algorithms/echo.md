@@ -13,7 +13,7 @@ Source: `modules/core/shared/src/main/scala/cs553/core/algorithms/wave/Echo.scal
 - Topology: an undirected connected graph with exactly one initiator. `Echo.protocol.check` tests these global requirements, and `World.init` calls it before each run. `Protocol.init` tests only that each node has the same in-neighbours and out-neighbours.
 - Channel order: `Fifo` by default. The algorithm is also correct with `AnyOrder`.
 - Message: `EchoMsg.Token`. Action: `EchoAction.Wake`, only at the initiator. Decision: `EchoOutput.WaveComplete`, only at the initiator.
-- State: `EchoState(role, phase, parent, received)`. The phase is one enum: `Idle`, `Waiting`, `Echoed` or `Decided`. The state has no Boolean flags.
+- State: `EchoState(role, phase, parent, received, expected)`. The phase is one enum: `Idle`, `Waiting`, `Echoed` or `Decided`. The state has no Boolean flags. `init` sets `expected` to the degree of the node, so the label "waiting, received k of deg" needs no topology.
 
 The rules follow Fokkink:
 
@@ -42,7 +42,7 @@ The property tests in `EchoSpec` check each invariant on random connected graphs
 - The run sends exactly 2|E| messages: one token in each direction of each edge.
 - The parent edges form a spanning tree with the initiator as the root. Only the initiator has no parent.
 - Only the initiator decides, and it decides exactly once. The decision is the last step of the run.
-- At the end, each non-initiator is `Echoed`, the initiator is `Decided`, and each node has `received` equal to its degree.
+- At the end, each non-initiator is `Echoed`, the initiator is `Decided`, and each node has `received` and `expected` equal to its degree.
 
 ## Example
 

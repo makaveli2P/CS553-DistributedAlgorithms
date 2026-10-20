@@ -233,7 +233,8 @@ object ChangRoberts {
   ): Result = {
     ctx.out.headOption match {
       case Some(next) => Right(Step(after, List(Send(next, msg)), decision, rule))
-      case None => Left(ProtocolError.IllegalAction(s"node ${ctx.self.value} has no successor"))
+      case None       =>
+        Left(ProtocolError.InvariantBroken(s"node ${ctx.self.value} has no successor"))
     }
   }
 

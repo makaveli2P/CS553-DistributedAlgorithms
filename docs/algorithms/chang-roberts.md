@@ -28,7 +28,7 @@ Passive nodes pass each message on. This includes all non-initiators.
 
 ### The decisions of this project
 
-1. **A non-initiator is passive from the start.** In Fokkink, a non-initiator never bids. It does not join the election when a message arrives. So a non-initiator that gets an `Elect` stays `Passive` and passes the message on (`relay-elect`). This is the Fokkink rule "a non-initiator that receives a message becomes passive": the node is already passive, so its state does not change. The college code used the "participant" variant, where a non-initiator replaces a smaller uid with its own uid. That variant elects the node with the maximum uid of all nodes, not the initiator with the maximum uid (review finding chang-roberts-3).
+1. **A non-initiator is passive from the start.** Non-initiators start `Passive` and relay every message, as in Fokkink. A non-initiator never bids. So a non-initiator that gets an `Elect` stays `Passive` and passes the message on (`relay-elect`). The college code used the "participant" variant, where a non-initiator replaces a smaller uid with its own uid. That variant elects the node with the maximum uid of all nodes, not the initiator with the maximum uid (review finding chang-roberts-3).
 2. **An initiator wakes with the `Wake` action.** In Fokkink, each initiator starts spontaneously. Here the scheduler chooses when each `Wake` fires, so a bid can reach an initiator before it wakes. An `Asleep` initiator applies the same comparison as an `Active` one:
    - for `q < p`, it purges the message and stays `Asleep`. It bids later, when `Wake` fires;
    - for `q > p`, it becomes `Passive` and passes the message on. `Wake` is then not offered, so the node never bids. This is the fix for review finding chang-roberts-1, where a late `Initiate` sent a second bid.
@@ -42,7 +42,7 @@ Passive nodes pass each message on. This includes all non-initiators.
 | `defeat` | `onMessage(Elect(q))` | `Asleep(p)` or `Active(p)` with `q > p` | `Passive(p)`, `Elect(q)` to the successor |
 | `relay-elect` | `onMessage(Elect(q))` | `Passive` or `Follower` | no change, `Elect(q)` to the successor |
 | `elected` | `onMessage(Elect(q))` | `Active(p)` with `q = p` | `Announcing(p)`, `Leader(p)` to the successor, decision `Elected(p)` |
-| `learn-leader` | `onMessage(Leader(u))` | `Passive` | `Follower(u)`, `Leader(u)` to the successor, decision `Follows(u)` |
+| `learn-leader` | `onMessage(Leader(u))` | `Passive(own)` | `Follower(own, u)`, `Leader(u)` to the successor, decision `Follows(u)` |
 | `announce-returned` | `onMessage(Leader(u))` | `Announcing(u)` | `Leader(u)`, no send |
 
 Each other combination returns `Left(ProtocolError)`, and the engine records `Rejected`. In a valid run, none of these occur.

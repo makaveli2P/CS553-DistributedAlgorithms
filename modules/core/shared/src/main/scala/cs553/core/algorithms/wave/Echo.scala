@@ -52,10 +52,16 @@ enum EchoPhase derives Codec.AsObject {
 }
 
 /** The state of one node. `parent` is the neighbour of the first token. The initiator has no
-  * parent. `received` counts the tokens that the node got.
+  * parent. `received` counts the tokens that the node got. `expected` is the degree of the node:
+  * the node waits for that many tokens.
   */
-final case class EchoState(role: Role, phase: EchoPhase, parent: Option[NodeId], received: Int)
-    derives Codec.AsObject
+final case class EchoState(
+    role: Role,
+    phase: EchoPhase,
+    parent: Option[NodeId],
+    received: Int,
+    expected: Int
+) derives Codec.AsObject
 
 /** The Echo algorithm (Fokkink, section 4.3). See `docs/algorithms/echo.md`. */
 object Echo {
@@ -147,8 +153,9 @@ object Echo {
       }
 
       def init(ctx: NodeCtx, attrs: NodeAttrs): Either[TopologyError, EchoState] = {
-        if ctx.in == ctx.out then { Right(EchoState(attrs.role, EchoPhase.Idle, None, 0)) }
-        else {
+        if ctx.in == ctx.out then {
+          Right(EchoState(attrs.role, EchoPhase.Idle, None, 0, ctx.out.size))
+        } else {
           Left(
             TopologyError.Requirement(
               s"Echo needs an undirected graph, but node ${ctx.self.value} has different " +
@@ -196,7 +203,7 @@ object Echo {
                       ProtocolError.UnexpectedMessage(from, "the initiator got a token before Wake")
                     )
                 }
-              case EchoPhase.Waiting                    => countToken(ctx, state)
+              case EchoPhase.Waiting                    => countToken(state)
               case EchoPhase.Echoed | EchoPhase.Decided =>
                 Left(ProtocolError.UnexpectedMessage(from, "the node got a token after its echo"))
             }
@@ -253,10 +260,10 @@ object Echo {
   }
 
   /** A node in phase `Waiting` gets one more token. */
-  private def countToken(ctx: NodeCtx, state: EchoState): Result = {
+  private def countToken(state: EchoState): Result = {
     val received = state.received + 1
     val counted = state.copy(received = received)
-    if received < ctx.out.size then { Right(Step(counted, Nil, None, Rules.countToken)) }
+    if received < state.expected then { Right(Step(counted, Nil, None, Rules.countToken)) }
     else {
       state.role match {
         case Role.Initiator =>
@@ -280,7 +287,7 @@ object Echo {
                 )
               )
             case None =>
-              Left(ProtocolError.IllegalAction("a waiting non-initiator has no parent"))
+              Left(ProtocolError.InvariantBroken("a waiting non-initiator has no parent"))
           }
       }
     }
@@ -291,7 +298,7 @@ object EchoState {
   given Inspect[EchoState] = new Inspect[EchoState] {
     def label(s: EchoState): String = s.phase match {
       case EchoPhase.Idle    => "idle"
-      case EchoPhase.Waiting => s"waiting, received ${s.received}"
+      case EchoPhase.Waiting => s"waiting, received ${s.received} of ${s.expected}"
       case EchoPhase.Echoed  => "echoed"
       case EchoPhase.Decided => "decided"
     }
@@ -299,7 +306,8 @@ object EchoState {
       "role" -> s.role.toString,
       "phase" -> s.phase.toString,
       "parent" -> s.parent.fold("none")(_.value.toString),
-      "received" -> s.received.toString
+      "received" -> s.received.toString,
+      "expected" -> s.expected.toString
     )
   }
 }
