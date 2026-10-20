@@ -54,7 +54,7 @@ object Simulator {
         else { Left(RunError.BadStepLimit(spec.stepLimit)) }
       start <- World.init(p, spec.topology, order).left.map(RunError.BadTopology(_))
       simulation <- {
-        val started = TraceEvent.Started(spec, Engine.Simulator, start.states.toMap)
+        val started = TraceEvent.Started(spec, Engine.Simulator, start.states)
         val (rng, script) = spec.policy match {
           case Policy.Seeded(seed)    => (Some(Rng(seed)), Nil)
           case Policy.Script(choices) => (None, choices)

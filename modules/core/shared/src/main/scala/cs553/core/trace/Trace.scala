@@ -12,6 +12,8 @@ import io.circe.Codec
 import io.circe.Decoder
 import io.circe.Encoder
 
+import scala.collection.immutable.SortedMap
+
 /** The id of one envelope. The sender assigns `seq` for each channel, from 0. So the id is the same
   * in each engine and in each replay.
   */
@@ -118,7 +120,9 @@ object RunSpec {
 
 /** One event of a trace. All engines write this format. Payloads stay typed. */
 enum TraceEvent[+S, +M, +A, +O] {
-  case Started(spec: RunSpec[A], engine: Engine, initial: Map[NodeId, S])
+
+  /** The first event. `initial` holds the state of each node, in node order. */
+  case Started(spec: RunSpec[A], engine: Engine, initial: SortedMap[NodeId, S])
   case Sent(at: Stamp, env: Envelope[M])
   case Stepped(
       at: Stamp,
@@ -128,6 +132,11 @@ enum TraceEvent[+S, +M, +A, +O] {
       after: S,
       sent: List[EnvelopeId]
   )
+
+  /** The handler of the node refused the choice. The state of the node does not change, and the
+    * step sends nothing. When the cause is `Deliver(id)`, the step still consumes the envelope: the
+    * envelope leaves its channel, as after a `Stepped` delivery.
+    */
   case Rejected(at: Stamp, node: NodeId, cause: Choice[A], error: ProtocolError)
   case Dropped(at: Stamp, id: EnvelopeId)
   case Decided(at: Stamp, node: NodeId, output: O)

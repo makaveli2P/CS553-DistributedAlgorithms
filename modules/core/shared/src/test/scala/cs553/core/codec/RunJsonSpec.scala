@@ -86,11 +86,44 @@ final class RunJsonSpec extends AnyFunSuite with PropertyBudget with EitherValue
     assert(back.map(_.trace.headOption) == Right(run.trace.headOption))
   }
 
-  test("malformed JSON gives Left") {
-    assert(
-      RunJson
-        .read[FloodState, FloodMsg, FloodAction, FloodOutput]("""{"trace": [{"Nope": {}}]}""")
-        .isLeft
+  test("text that is not JSON gives one Syntax error") {
+    val errors = RunJson.read[FloodState, FloodMsg, FloodAction, FloodOutput]("{").left.value
+    assert(errors.size == 1)
+    assert(errors.head match {
+      case TraceError.Syntax(_)   => true
+      case TraceError.Shape(_, _) => false
+    })
+  }
+
+  test("JSON with the wrong shape gives Shape errors with the path") {
+    val errors = RunJson
+      .read[FloodState, FloodMsg, FloodAction, FloodOutput]("""{"trace": [{"Nope": {}}]}""")
+      .left
+      .value
+    assert(errors.toList.forall {
+      case TraceError.Shape(path, _) => path.startsWith(".trace")
+      case TraceError.Syntax(_)      => false
+    })
+  }
+
+  test("the initial states are in node order in the JSON, also for more than 4 nodes") {
+    val topology = Graphs.fixed(Topology.ring(12, Graphs.initiatorAttrs))
+    val spec = RunSpec(
+      flood.id,
+      topology,
+      ChannelOrder.Fifo,
+      Policy.Seeded(Seed(3L)),
+      StopRule.AtQuiescence,
+      0
     )
+    val json = io.circe.parser.parse(RunJson.write(Simulator.run(flood, spec).value.run)).value
+    val keys = json.hcursor
+      .downField("trace")
+      .downArray
+      .downField("Started")
+      .downField("initial")
+      .keys
+      .map(_.toList)
+    assert(keys == Some((0 until 12).map(_.toString).toList))
   }
 }
