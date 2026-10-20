@@ -1,0 +1,2009 @@
+{
+  "trace" : [
+    {
+      "Started" : {
+        "spec" : {
+          "algorithm" : "bracha-toueg",
+          "topology" : {
+            "nodes" : [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "edges" : [
+              {
+                "from" : 0,
+                "to" : 1
+              },
+              {
+                "from" : 0,
+                "to" : 2
+              },
+              {
+                "from" : 1,
+                "to" : 3
+              },
+              {
+                "from" : 2,
+                "to" : 4
+              },
+              {
+                "from" : 2,
+                "to" : 5
+              },
+              {
+                "from" : 3,
+                "to" : 1
+              },
+              {
+                "from" : 5,
+                "to" : 4
+              }
+            ],
+            "attrs" : {
+              "0" : {
+                "role" : {
+                  "Initiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  "request" : "1"
+                }
+              },
+              "5" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  
+                }
+              },
+              "1" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  
+                }
+              },
+              "2" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  
+                }
+              },
+              "3" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  
+                }
+              },
+              "4" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  
+                }
+              }
+            }
+          },
+          "order" : {
+            "Fifo" : {
+              
+            }
+          },
+          "policy" : {
+            "Seeded" : {
+              "seed" : "1"
+            }
+          },
+          "stop" : {
+            "AtQuiescence" : {
+              
+            }
+          },
+          "stepLimit" : 1000
+        },
+        "engine" : {
+          "Simulator" : {
+            
+          }
+        },
+        "initial" : {
+          "0" : {
+            "role" : {
+              "Initiator" : {
+                
+              }
+            },
+            "waitsFor" : [
+              1,
+              2
+            ],
+            "waitedBy" : [
+            ],
+            "need" : 1,
+            "requests" : 1,
+            "notifyPhase" : {
+              "Idle" : {
+                
+              }
+            },
+            "grantPhase" : {
+              "Blocked" : {
+                
+              }
+            }
+          },
+          "1" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "waitsFor" : [
+              3
+            ],
+            "waitedBy" : [
+              0,
+              3
+            ],
+            "need" : 1,
+            "requests" : 1,
+            "notifyPhase" : {
+              "Idle" : {
+                
+              }
+            },
+            "grantPhase" : {
+              "Blocked" : {
+                
+              }
+            }
+          },
+          "2" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "waitsFor" : [
+              4,
+              5
+            ],
+            "waitedBy" : [
+              0
+            ],
+            "need" : 2,
+            "requests" : 2,
+            "notifyPhase" : {
+              "Idle" : {
+                
+              }
+            },
+            "grantPhase" : {
+              "Blocked" : {
+                
+              }
+            }
+          },
+          "3" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "waitsFor" : [
+              1
+            ],
+            "waitedBy" : [
+              1
+            ],
+            "need" : 1,
+            "requests" : 1,
+            "notifyPhase" : {
+              "Idle" : {
+                
+              }
+            },
+            "grantPhase" : {
+              "Blocked" : {
+                
+              }
+            }
+          },
+          "4" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "waitsFor" : [
+            ],
+            "waitedBy" : [
+              2,
+              5
+            ],
+            "need" : 0,
+            "requests" : 0,
+            "notifyPhase" : {
+              "Idle" : {
+                
+              }
+            },
+            "grantPhase" : {
+              "Blocked" : {
+                
+              }
+            }
+          },
+          "5" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "waitsFor" : [
+              4
+            ],
+            "waitedBy" : [
+              2
+            ],
+            "need" : 1,
+            "requests" : 1,
+            "notifyPhase" : {
+              "Idle" : {
+                
+              }
+            },
+            "grantPhase" : {
+              "Blocked" : {
+                
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 1,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "node" : 0,
+        "cause" : {
+          "Fire" : {
+            "node" : 0,
+            "action" : {
+              "Wake" : {
+                
+              }
+            }
+          }
+        },
+        "rule" : "wake",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            1,
+            2
+          ],
+          "waitedBy" : [
+          ],
+          "need" : 1,
+          "requests" : 1,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : null,
+              "dones" : 2
+            }
+          },
+          "grantPhase" : {
+            "Blocked" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 0,
+            "to" : 1,
+            "seq" : 0
+          },
+          {
+            "from" : 0,
+            "to" : 2,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 1,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "env" : {
+          "id" : {
+            "from" : 0,
+            "to" : 1,
+            "seq" : 0
+          },
+          "msg" : {
+            "Notify" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 1,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "env" : {
+          "id" : {
+            "from" : 0,
+            "to" : 2,
+            "seq" : 0
+          },
+          "msg" : {
+            "Notify" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 2,
+          "local" : 1,
+          "lamport" : 2
+        },
+        "node" : 2,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 0,
+              "to" : 2,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "first-notify",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            4,
+            5
+          ],
+          "waitedBy" : [
+            0
+          ],
+          "need" : 2,
+          "requests" : 2,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : 0,
+              "dones" : 2
+            }
+          },
+          "grantPhase" : {
+            "Blocked" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 2,
+            "to" : 4,
+            "seq" : 0
+          },
+          {
+            "from" : 2,
+            "to" : 5,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 2,
+          "local" : 1,
+          "lamport" : 2
+        },
+        "env" : {
+          "id" : {
+            "from" : 2,
+            "to" : 4,
+            "seq" : 0
+          },
+          "msg" : {
+            "Notify" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 2,
+          "local" : 1,
+          "lamport" : 2
+        },
+        "env" : {
+          "id" : {
+            "from" : 2,
+            "to" : 5,
+            "seq" : 0
+          },
+          "msg" : {
+            "Notify" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 3,
+          "local" : 1,
+          "lamport" : 2
+        },
+        "node" : 1,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 0,
+              "to" : 1,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "first-notify",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            3
+          ],
+          "waitedBy" : [
+            0,
+            3
+          ],
+          "need" : 1,
+          "requests" : 1,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : 0,
+              "dones" : 1
+            }
+          },
+          "grantPhase" : {
+            "Blocked" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 1,
+            "to" : 3,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 3,
+          "local" : 1,
+          "lamport" : 2
+        },
+        "env" : {
+          "id" : {
+            "from" : 1,
+            "to" : 3,
+            "seq" : 0
+          },
+          "msg" : {
+            "Notify" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 4,
+          "local" : 1,
+          "lamport" : 3
+        },
+        "node" : 5,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 2,
+              "to" : 5,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "first-notify",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            4
+          ],
+          "waitedBy" : [
+            2
+          ],
+          "need" : 1,
+          "requests" : 1,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : 2,
+              "dones" : 1
+            }
+          },
+          "grantPhase" : {
+            "Blocked" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 5,
+            "to" : 4,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 4,
+          "local" : 1,
+          "lamport" : 3
+        },
+        "env" : {
+          "id" : {
+            "from" : 5,
+            "to" : 4,
+            "seq" : 0
+          },
+          "msg" : {
+            "Notify" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 5,
+          "local" : 1,
+          "lamport" : 3
+        },
+        "node" : 4,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 2,
+              "to" : 4,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "first-notify",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+          ],
+          "waitedBy" : [
+            2,
+            5
+          ],
+          "need" : 0,
+          "requests" : 0,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : 2,
+              "dones" : 0
+            }
+          },
+          "grantPhase" : {
+            "Granting" : {
+              "acks" : 2,
+              "ackTo" : null
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 4,
+            "to" : 2,
+            "seq" : 0
+          },
+          {
+            "from" : 4,
+            "to" : 5,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 5,
+          "local" : 1,
+          "lamport" : 3
+        },
+        "env" : {
+          "id" : {
+            "from" : 4,
+            "to" : 2,
+            "seq" : 0
+          },
+          "msg" : {
+            "Grant" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 5,
+          "local" : 1,
+          "lamport" : 3
+        },
+        "env" : {
+          "id" : {
+            "from" : 4,
+            "to" : 5,
+            "seq" : 0
+          },
+          "msg" : {
+            "Grant" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 6,
+          "local" : 1,
+          "lamport" : 3
+        },
+        "node" : 3,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 1,
+              "to" : 3,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "first-notify",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            1
+          ],
+          "waitedBy" : [
+            1
+          ],
+          "need" : 1,
+          "requests" : 1,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : 1,
+              "dones" : 1
+            }
+          },
+          "grantPhase" : {
+            "Blocked" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 3,
+            "to" : 1,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 6,
+          "local" : 1,
+          "lamport" : 3
+        },
+        "env" : {
+          "id" : {
+            "from" : 3,
+            "to" : 1,
+            "seq" : 0
+          },
+          "msg" : {
+            "Notify" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 7,
+          "local" : 2,
+          "lamport" : 4
+        },
+        "node" : 5,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 4,
+              "to" : 5,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "last-grant",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            4
+          ],
+          "waitedBy" : [
+            2
+          ],
+          "need" : 1,
+          "requests" : 0,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : 2,
+              "dones" : 1
+            }
+          },
+          "grantPhase" : {
+            "Granting" : {
+              "acks" : 1,
+              "ackTo" : 4
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 5,
+            "to" : 2,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 7,
+          "local" : 2,
+          "lamport" : 4
+        },
+        "env" : {
+          "id" : {
+            "from" : 5,
+            "to" : 2,
+            "seq" : 0
+          },
+          "msg" : {
+            "Grant" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 8,
+          "local" : 2,
+          "lamport" : 5
+        },
+        "node" : 2,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 5,
+              "to" : 2,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "count-grant",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            4,
+            5
+          ],
+          "waitedBy" : [
+            0
+          ],
+          "need" : 2,
+          "requests" : 1,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : 0,
+              "dones" : 2
+            }
+          },
+          "grantPhase" : {
+            "Blocked" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 2,
+            "to" : 5,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 8,
+          "local" : 2,
+          "lamport" : 5
+        },
+        "env" : {
+          "id" : {
+            "from" : 2,
+            "to" : 5,
+            "seq" : 1
+          },
+          "msg" : {
+            "Ack" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 9,
+          "local" : 3,
+          "lamport" : 6
+        },
+        "node" : 5,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 2,
+              "to" : 5,
+              "seq" : 1
+            }
+          }
+        },
+        "rule" : "last-ack",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            4
+          ],
+          "waitedBy" : [
+            2
+          ],
+          "need" : 1,
+          "requests" : 0,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : 2,
+              "dones" : 1
+            }
+          },
+          "grantPhase" : {
+            "Free" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 5,
+            "to" : 4,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 9,
+          "local" : 3,
+          "lamport" : 6
+        },
+        "env" : {
+          "id" : {
+            "from" : 5,
+            "to" : 4,
+            "seq" : 1
+          },
+          "msg" : {
+            "Ack" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 10,
+          "local" : 2,
+          "lamport" : 4
+        },
+        "node" : 4,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 5,
+              "to" : 4,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "repeat-notify",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+          ],
+          "waitedBy" : [
+            2,
+            5
+          ],
+          "need" : 0,
+          "requests" : 0,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : 2,
+              "dones" : 0
+            }
+          },
+          "grantPhase" : {
+            "Granting" : {
+              "acks" : 2,
+              "ackTo" : null
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 4,
+            "to" : 5,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 10,
+          "local" : 2,
+          "lamport" : 4
+        },
+        "env" : {
+          "id" : {
+            "from" : 4,
+            "to" : 5,
+            "seq" : 1
+          },
+          "msg" : {
+            "Done" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 11,
+          "local" : 2,
+          "lamport" : 4
+        },
+        "node" : 1,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 3,
+              "to" : 1,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "repeat-notify",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            3
+          ],
+          "waitedBy" : [
+            0,
+            3
+          ],
+          "need" : 1,
+          "requests" : 1,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : 0,
+              "dones" : 1
+            }
+          },
+          "grantPhase" : {
+            "Blocked" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 1,
+            "to" : 3,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 11,
+          "local" : 2,
+          "lamport" : 4
+        },
+        "env" : {
+          "id" : {
+            "from" : 1,
+            "to" : 3,
+            "seq" : 1
+          },
+          "msg" : {
+            "Done" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 12,
+          "local" : 3,
+          "lamport" : 7
+        },
+        "node" : 4,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 5,
+              "to" : 4,
+              "seq" : 1
+            }
+          }
+        },
+        "rule" : "count-ack",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+          ],
+          "waitedBy" : [
+            2,
+            5
+          ],
+          "need" : 0,
+          "requests" : 0,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : 2,
+              "dones" : 0
+            }
+          },
+          "grantPhase" : {
+            "Granting" : {
+              "acks" : 1,
+              "ackTo" : null
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 13,
+          "local" : 3,
+          "lamport" : 6
+        },
+        "node" : 2,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 4,
+              "to" : 2,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "last-grant",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            4,
+            5
+          ],
+          "waitedBy" : [
+            0
+          ],
+          "need" : 2,
+          "requests" : 0,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : 0,
+              "dones" : 2
+            }
+          },
+          "grantPhase" : {
+            "Granting" : {
+              "acks" : 1,
+              "ackTo" : 4
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 2,
+            "to" : 0,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 13,
+          "local" : 3,
+          "lamport" : 6
+        },
+        "env" : {
+          "id" : {
+            "from" : 2,
+            "to" : 0,
+            "seq" : 0
+          },
+          "msg" : {
+            "Grant" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 14,
+          "local" : 4,
+          "lamport" : 7
+        },
+        "node" : 5,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 4,
+              "to" : 5,
+              "seq" : 1
+            }
+          }
+        },
+        "rule" : "count-done",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            4
+          ],
+          "waitedBy" : [
+            2
+          ],
+          "need" : 1,
+          "requests" : 0,
+          "notifyPhase" : {
+            "Notified" : {
+              
+            }
+          },
+          "grantPhase" : {
+            "Free" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 5,
+            "to" : 2,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 14,
+          "local" : 4,
+          "lamport" : 7
+        },
+        "env" : {
+          "id" : {
+            "from" : 5,
+            "to" : 2,
+            "seq" : 1
+          },
+          "msg" : {
+            "Done" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 15,
+          "local" : 4,
+          "lamport" : 8
+        },
+        "node" : 2,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 5,
+              "to" : 2,
+              "seq" : 1
+            }
+          }
+        },
+        "rule" : "count-done",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            4,
+            5
+          ],
+          "waitedBy" : [
+            0
+          ],
+          "need" : 2,
+          "requests" : 0,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : 0,
+              "dones" : 1
+            }
+          },
+          "grantPhase" : {
+            "Granting" : {
+              "acks" : 1,
+              "ackTo" : 4
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 16,
+          "local" : 2,
+          "lamport" : 7
+        },
+        "node" : 0,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 2,
+              "to" : 0,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "last-grant",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            1,
+            2
+          ],
+          "waitedBy" : [
+          ],
+          "need" : 1,
+          "requests" : 0,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : null,
+              "dones" : 2
+            }
+          },
+          "grantPhase" : {
+            "Free" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 0,
+            "to" : 2,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 16,
+          "local" : 2,
+          "lamport" : 7
+        },
+        "env" : {
+          "id" : {
+            "from" : 0,
+            "to" : 2,
+            "seq" : 1
+          },
+          "msg" : {
+            "Ack" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 17,
+          "local" : 2,
+          "lamport" : 5
+        },
+        "node" : 3,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 1,
+              "to" : 3,
+              "seq" : 1
+            }
+          }
+        },
+        "rule" : "count-done",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            1
+          ],
+          "waitedBy" : [
+            1
+          ],
+          "need" : 1,
+          "requests" : 1,
+          "notifyPhase" : {
+            "Notified" : {
+              
+            }
+          },
+          "grantPhase" : {
+            "Blocked" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 3,
+            "to" : 1,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 17,
+          "local" : 2,
+          "lamport" : 5
+        },
+        "env" : {
+          "id" : {
+            "from" : 3,
+            "to" : 1,
+            "seq" : 1
+          },
+          "msg" : {
+            "Done" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 18,
+          "local" : 5,
+          "lamport" : 9
+        },
+        "node" : 2,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 0,
+              "to" : 2,
+              "seq" : 1
+            }
+          }
+        },
+        "rule" : "last-ack",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            4,
+            5
+          ],
+          "waitedBy" : [
+            0
+          ],
+          "need" : 2,
+          "requests" : 0,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : 0,
+              "dones" : 1
+            }
+          },
+          "grantPhase" : {
+            "Free" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 2,
+            "to" : 4,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 18,
+          "local" : 5,
+          "lamport" : 9
+        },
+        "env" : {
+          "id" : {
+            "from" : 2,
+            "to" : 4,
+            "seq" : 1
+          },
+          "msg" : {
+            "Ack" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 19,
+          "local" : 3,
+          "lamport" : 6
+        },
+        "node" : 1,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 3,
+              "to" : 1,
+              "seq" : 1
+            }
+          }
+        },
+        "rule" : "count-done",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            3
+          ],
+          "waitedBy" : [
+            0,
+            3
+          ],
+          "need" : 1,
+          "requests" : 1,
+          "notifyPhase" : {
+            "Notified" : {
+              
+            }
+          },
+          "grantPhase" : {
+            "Blocked" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 1,
+            "to" : 0,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 19,
+          "local" : 3,
+          "lamport" : 6
+        },
+        "env" : {
+          "id" : {
+            "from" : 1,
+            "to" : 0,
+            "seq" : 0
+          },
+          "msg" : {
+            "Done" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 20,
+          "local" : 3,
+          "lamport" : 8
+        },
+        "node" : 0,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 1,
+              "to" : 0,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "count-done",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            1,
+            2
+          ],
+          "waitedBy" : [
+          ],
+          "need" : 1,
+          "requests" : 0,
+          "notifyPhase" : {
+            "Notifying" : {
+              "parent" : null,
+              "dones" : 1
+            }
+          },
+          "grantPhase" : {
+            "Free" : {
+              
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 21,
+          "local" : 4,
+          "lamport" : 10
+        },
+        "node" : 4,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 2,
+              "to" : 4,
+              "seq" : 1
+            }
+          }
+        },
+        "rule" : "last-ack",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+          ],
+          "waitedBy" : [
+            2,
+            5
+          ],
+          "need" : 0,
+          "requests" : 0,
+          "notifyPhase" : {
+            "Notified" : {
+              
+            }
+          },
+          "grantPhase" : {
+            "Free" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 4,
+            "to" : 2,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 21,
+          "local" : 4,
+          "lamport" : 10
+        },
+        "env" : {
+          "id" : {
+            "from" : 4,
+            "to" : 2,
+            "seq" : 1
+          },
+          "msg" : {
+            "Done" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 22,
+          "local" : 6,
+          "lamport" : 11
+        },
+        "node" : 2,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 4,
+              "to" : 2,
+              "seq" : 1
+            }
+          }
+        },
+        "rule" : "count-done",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            4,
+            5
+          ],
+          "waitedBy" : [
+            0
+          ],
+          "need" : 2,
+          "requests" : 0,
+          "notifyPhase" : {
+            "Notified" : {
+              
+            }
+          },
+          "grantPhase" : {
+            "Free" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 2,
+            "to" : 0,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 22,
+          "local" : 6,
+          "lamport" : 11
+        },
+        "env" : {
+          "id" : {
+            "from" : 2,
+            "to" : 0,
+            "seq" : 1
+          },
+          "msg" : {
+            "Done" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 23,
+          "local" : 4,
+          "lamport" : 12
+        },
+        "node" : 0,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 2,
+              "to" : 0,
+              "seq" : 1
+            }
+          }
+        },
+        "rule" : "count-done",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "waitsFor" : [
+            1,
+            2
+          ],
+          "waitedBy" : [
+          ],
+          "need" : 1,
+          "requests" : 0,
+          "notifyPhase" : {
+            "Notified" : {
+              
+            }
+          },
+          "grantPhase" : {
+            "Free" : {
+              
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Decided" : {
+        "at" : {
+          "step" : 23,
+          "local" : 4,
+          "lamport" : 12
+        },
+        "node" : 0,
+        "output" : {
+          "NotDeadlocked" : {
+            
+          }
+        }
+      }
+    },
+    {
+      "Finished" : {
+        "at" : {
+          "step" : 23,
+          "local" : 0,
+          "lamport" : 0
+        },
+        "outcome" : {
+          "Quiescent" : {
+            
+          }
+        }
+      }
+    }
+  ]
+}
