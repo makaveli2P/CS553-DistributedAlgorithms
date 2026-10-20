@@ -205,4 +205,65 @@ final class SimulatorSpec extends AnyFunSuite with PropertyBudget with EitherVal
         .BadStepLimit(-1)
     )
   }
+
+  test("replay of the choices of a seeded run gives the same trace and worlds") {
+    forAll(Graphs.connected, Gen.long, orders) {
+      (topology: Topology, seed: Long, order: ChannelOrder) =>
+        val spec = floodSpec(topology, seed, order)
+        val seeded = Simulator.run(flood, spec).value
+        val replayed = Simulator.replay(flood, spec, seeded.choices).value
+        assert(replayed.worlds == seeded.worlds)
+        assert(replayed.run == seeded.run)
+    }
+  }
+
+  test("continue from step k: replay of the first k choices gives the first k+1 worlds") {
+    forAll(Graphs.connected, Gen.long, Gen.choose(0, 40)) {
+      (topology: Topology, seed: Long, k: Int) =>
+        val spec = floodSpec(topology, seed)
+        val seeded = Simulator.run(flood, spec).value
+        val prefix = Simulator.replay(flood, spec, seeded.choices.take(k)).value
+        assert(prefix.worlds == seeded.worlds.take(k + 1))
+        assert(prefix.choices == seeded.choices.take(k))
+    }
+  }
+
+  test("stepping with seededChoice and advance gives the seeded run") {
+    forAll(Graphs.connected, Gen.long, orders) {
+      (topology: Topology, seed: Long, order: ChannelOrder) =>
+        val spec = floodSpec(topology, seed, order)
+        val stepped = Iterator
+          .iterate(Option(Simulator.start(flood, spec).value)) { current =>
+            for {
+              simulation <- current
+              if simulation.run.outcome.isEmpty
+              w <- simulation.last
+              choice <- Simulator.seededChoice(Seed(seed), w.step, World.enabled(flood, w))
+              next <- Simulator.advance(flood, spec, simulation, List(choice)).toOption
+            } yield next
+          }
+          .takeWhile(_.nonEmpty)
+          .toList
+          .flatten
+          .lastOption
+        assert(stepped.map(_.run) == Some(runFlood(spec)))
+    }
+  }
+
+  test("a choice after the run stopped gives AfterStop") {
+    val spec = floodSpec(line, 1L)
+    val finished = Simulator.run(flood, spec).value
+    val extra = Choice.Fire(NodeId(0), FloodAction.Start)
+    assert(
+      Simulator.advance(flood, spec, finished, List(extra)).left.value ==
+        RunError.AfterStop(finished.worlds.size, extra, Outcome.Quiescent)
+    )
+    assert(Simulator.advance(flood, spec, finished, Nil).value == finished)
+  }
+
+  test("start with a step limit of 0 finishes at once with StepLimit") {
+    val started = Simulator.start(flood, floodSpec(line, 1L).copy(stepLimit = 0)).value
+    assert(started.run.outcome == Some(Outcome.StepLimit))
+    assert(started.worlds.size == 1)
+  }
 }

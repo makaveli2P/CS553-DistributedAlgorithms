@@ -61,6 +61,9 @@ enum TopologyError derives Codec.AsObject {
   }
 }
 
+/** A named topology that suits one algorithm. A shared link holds the name, not the topology. */
+final case class Preset(name: String, topology: Topology)
+
 /** A network: the nodes, the directed edges and the input attributes of each node.
   *
   * An undirected graph holds both directions of each edge. Only the smart constructors make a

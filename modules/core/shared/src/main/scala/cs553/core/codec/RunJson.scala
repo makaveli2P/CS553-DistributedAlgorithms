@@ -35,6 +35,13 @@ object RunJson {
     run.asJson.noSpaces
   }
 
+  /** The same JSON with two-space indents and one field on each line. The golden traces use it, so
+    * that a diff shows the changed events.
+    */
+  def writePretty[S: Encoder, M: Encoder, A: Encoder, O: Encoder](run: Run[S, M, A, O]): String = {
+    run.asJson.spaces2
+  }
+
   def read[S: Decoder, M: Decoder, A: Decoder, O: Decoder](
       text: String
   ): Either[NonEmptyList[TraceError], Run[S, M, A, O]] = {
