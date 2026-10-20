@@ -1,4 +1,4 @@
-# CS553 Distributed Algorithms
+# Distributed Algorithms
 
 This project teaches eight distributed algorithms from Wan Fokkink, *Distributed Algorithms: An Intuitive Approach* (2nd edition):
 

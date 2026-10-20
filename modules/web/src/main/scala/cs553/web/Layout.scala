@@ -123,6 +123,35 @@ object Layout {
     }
   }
 
+  /** The text of the one action chip of a node: the action itself, or a count for several. */
+  def actionText(actions: List[ActionView]): Option[String] = actions match {
+    case Nil        => None
+    case one :: Nil => Some(one.label)
+    case many       => Some(s"${many.size} actions")
+  }
+
+  /** The box of the action chip of a node, or nothing when the node has no action. */
+  def actionBox(spot: LabelSpot, actions: List[ActionView]): Option[Box] = {
+    actionText(actions).map { text =>
+      val w = envelopeWidth(text)
+      val cx = spot.side match {
+        case LabelSide.Above | LabelSide.Below => spot.x
+        case LabelSide.Right                   => spot.x + w / 2
+        case LabelSide.Left                    => spot.x - w / 2
+      }
+      Box(cx - w / 2, spot.actionY - envelopeHeight / 2, w, envelopeHeight)
+    }
+  }
+
+  /** The smallest box that holds `box` and each of `extras`, with `pad` around the extras. */
+  def fit(box: Box, extras: List[Box], pad: Double): Box = {
+    val left = (box.x :: extras.map(_.x - pad)).min
+    val top = (box.y :: extras.map(_.y - pad)).min
+    val right = ((box.x + box.width) :: extras.map(b => b.x + b.width + pad)).max
+    val bottom = ((box.y + box.height) :: extras.map(b => b.y + b.height + pad)).max
+    Box(left, top, right - left, bottom - top)
+  }
+
   /** The approximate card behind the label lines. Queues keep clear of it where they can. */
   def labelCard(spot: LabelSpot, lines: List[String]): Box = {
     val w = lines.map(_.length).maxOption.getOrElse(0) * 7.0 + 8

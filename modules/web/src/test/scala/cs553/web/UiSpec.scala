@@ -55,7 +55,7 @@ final class UiSpec extends AnyFunSuite {
     val state = open("echo")
     val screen = Ui.screen(state)
     assert(screen.map(_.frame.step) == Some(0))
-    assert(screen.flatMap(_.primary).map(_.label) == Some("Wake node 1"))
+    assert(screen.flatMap(_.primary).map(_.label) == Some("Node 1: Wake"))
     assert(screen.map(_.panel) == Some(None))
     assert(screen.exists(_.frame.nodes.exists(n => n.actions.map(_.label) == List("Wake"))))
   }
@@ -201,7 +201,7 @@ final class UiSpec extends AnyFunSuite {
     node.foreach { n =>
       val opened = apply(woke, UiEvent.SelectNode(n))
       Ui.screen(opened).flatMap(_.panel) match {
-        case Some(PanelView.NodeInfo(id, fields, _, _, rule, _)) =>
+        case Some(PanelView.NodeInfo(id, fields, _, _, rule, _, _)) =>
           assert(id == n)
           assert(fields.exists(_._1 == "phase"))
           assert(rule.exists(_.startsWith("wake")))
@@ -329,7 +329,7 @@ final class UiSpec extends AnyFunSuite {
   test("the node panel lists the envelopes that wait for the node") {
     val woke = apply(open("echo"), UiEvent.Forward, UiEvent.SelectNode(NodeId(2)))
     Ui.screen(woke).flatMap(_.panel) match {
-      case Some(PanelView.NodeInfo(_, _, waiting, _, _, _)) =>
+      case Some(PanelView.NodeInfo(_, _, waiting, _, _, _, _)) =>
         assert(waiting == List("Token from node 1"))
       case other => fail(s"expected a node panel, got $other")
     }
@@ -398,5 +398,41 @@ final class UiSpec extends AnyFunSuite {
     assert(fills == List(NodeFill.Chosen))
     val start = s0.flatMap(_.frame(Layout.defaultSize)).toList.flatMap(_.nodes)
     assert(start.forall(_.fill.isEmpty))
+  }
+
+  test("for every algorithm, preset and canvas size the labels and chips lie inside the view box") {
+    for {
+      entry <- Registry.all
+      preset <- entry.algorithm.presets
+      size <- List(Size(930, 496), Size(356, 490))
+    } {
+      val start = Ui.update(
+        Ui.initial,
+        UiEvent.Navigate(Route.Open(entry.id))
+      )
+      val chosen =
+        Ui.update(Ui.update(start, UiEvent.Resized(size)), UiEvent.ChoosePreset(preset.name))
+      val steps = List(
+        chosen,
+        Ui.update(chosen, UiEvent.Forward),
+        Ui.update(Ui.update(chosen, UiEvent.Forward), UiEvent.Forward)
+      )
+      steps.flatMap(Ui.screen).foreach { screen =>
+        val box = screen.frame.box
+        def inside(b: Box): Boolean =
+          b.x >= box.x && b.y >= box.y && b.x + b.width <= box.x + box.width &&
+            b.y + b.height <= box.y + box.height
+        screen.frame.nodes.foreach { n =>
+          val spot = Layout.labelSpot(n.at, n.side, n.lines.size)
+          val boxes = Layout.labelCard(spot, n.lines) :: Layout.actionBox(spot, n.actions).toList
+          assert(boxes.forall(inside), (entry.id, preset.name, size, n.id))
+          assert(
+            n.actions.size <= 1 || Layout
+              .actionText(n.actions)
+              .contains(s"${n.actions.size} actions")
+          )
+        }
+      }
+    }
   }
 }

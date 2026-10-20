@@ -1,6 +1,6 @@
 # Agent guide
 
-CS553 Distributed Algorithms: eight textbook algorithms (Fokkink variants) as one pure Scala 3 model, a browser visualizer (Scala.js and Laminar) and Akka Typed engines.
+Distributed Algorithms: eight textbook algorithms (Fokkink variants) as one pure Scala 3 model, a browser visualizer (Scala.js and Laminar) and Akka Typed engines.
 
 The full rules are in [docs/coding-rules.md](docs/coding-rules.md). Read them before you change code. The setup and the commands are in [CONTRIBUTING.md](CONTRIBUTING.md).
 

@@ -40,10 +40,26 @@ object Panels {
 
   private def content(view: PanelView, dispatch: Observer[UiEvent]): List[HtmlElement] =
     view match {
-      case PanelView.NodeInfo(id, fields, waiting, lastMessage, lastRule, decision) =>
+      case PanelView.NodeInfo(id, fields, waiting, lastMessage, lastRule, decision, actions) =>
         List(
           header(s"Node ${id.value}", dispatch),
           rows(fields ++ decision.map("decision" -> _).toList),
+          if actions.isEmpty then { div(cls("actions-none")) }
+          else {
+            div(
+              cls("actions"),
+              h3("Actions"),
+              actions.map { a =>
+                button(
+                  cls(if a.next then {
+                    "primary"
+                  } else { "secondary" }),
+                  a.label,
+                  onClick.mapTo(UiEvent.Fire(id, a.index)) --> dispatch
+                )
+              }
+            )
+          },
           h3("Waiting for this node"),
           if waiting.isEmpty then { p(cls("empty"), "Nothing waiting") }
           else { ul(cls("waiting"), waiting.map(text => li(text))) },

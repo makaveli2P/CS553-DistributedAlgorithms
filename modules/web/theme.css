@@ -124,7 +124,10 @@ a.card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .card-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 0 2px; }
 .card-name { font-size: 15px; font-weight: 500; }
 a.card:hover .card-name { color: var(--accent); }
-.family { font-size: 13px; color: var(--muted); }
+.family-group { margin-bottom: 28px; }
+.family-title { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; margin: 0 0 10px; }
+.actions { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; align-items: flex-start; }
+.actions h3 { margin: 0; }
 
 .later-label { margin: 32px 0 10px; font-size: 13px; color: var(--faint); }
 .cards--later { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
@@ -411,7 +414,6 @@ a.card:hover .card-name { color: var(--accent); }
   .card { padding: 8px 8px 10px; gap: 8px; }
   .card-label { flex-direction: column; gap: 0; }
   .card-name { font-size: 14px; }
-  .family { font-size: 12px; }
 }
 
 .label-card { fill: var(--surface); pointer-events: none; }

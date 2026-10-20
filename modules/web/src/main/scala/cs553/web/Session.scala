@@ -364,6 +364,21 @@ final case class Session[S, M, A, O](
     notes.reverse
   }
 
+  private def actionViews(
+      w: World[S, M],
+      node: NodeId,
+      state: S,
+      next: Option[Choice[A]]
+  ): List[ActionView] = {
+    if live then {
+      w.ctxs.get(node).toList.flatMap { ctx =>
+        alg.protocol.actions(ctx, state).zipWithIndex.map { case (a, i) =>
+          ActionView(i, actionLabel(a), next.contains(Choice.Fire(node, a)))
+        }
+      }
+    } else { Nil }
+  }
+
   def frame(size: Size): Option[Frame] = sim.worlds.lift(cursor).map { w =>
     val plan = Layout.plan(w.topology, size)
     val points = plan.positions
@@ -375,13 +390,7 @@ final case class Session[S, M, A, O](
     val next = if live then { nextChoice }
     else { None }
     val nodes = w.states.toList.map { case (node, state) =>
-      val actions = if live then {
-        w.ctxs.get(node).toList.flatMap { ctx =>
-          alg.protocol.actions(ctx, state).zipWithIndex.map { case (a, i) =>
-            ActionView(i, actionLabel(a), next.contains(Choice.Fire(node, a)))
-          }
-        }
-      } else { Nil }
+      val actions = actionViews(w, node, state, next)
       val at = points.getOrElse(node, Point(0, 0))
       NodeView(
         node,
@@ -399,13 +408,19 @@ final case class Session[S, M, A, O](
     def finishedAs(want: Outcome): Option[Int] = finish.collect {
       case (step, outcome) if outcome == want && step <= cursor => step
     }
-    val cards =
-      nodes.map(n => Layout.labelCard(Layout.labelSpot(n.at, n.side, n.lines.size), n.lines))
+    val spots = nodes.map(n => n -> Layout.labelSpot(n.at, n.side, n.lines.size))
+    val cards = spots.map { case (n, spot) => Layout.labelCard(spot, n.lines) }
+    // The view box grows to hold each label and action chip, so that nothing is ever cut.
+    val box = Layout.fit(
+      plan.box,
+      cards ++ spots.flatMap { case (n, spot) => Layout.actionBox(spot, n.actions) },
+      8.0
+    )
     val notes = noteViews(points, marks, cards)
     val noteBoxes = notes.map(n => Layout.noteBox(n.at, n.text))
     val (envelopes, more) = envelopeViews(w, points, cards, noteBoxes)
     Frame(
-      plan.box,
+      box,
       nodes,
       edgeViews(w, points, marks),
       envelopes,
@@ -449,7 +464,14 @@ final case class Session[S, M, A, O](
         waiting,
         lastMessage,
         lastRule,
-        decidedNodes.get(node).map(alg.inspectOutput.label)
+        decidedNodes.get(node).map(alg.inspectOutput.label),
+        actionViews(
+          w,
+          node,
+          state,
+          if live then { nextChoice }
+          else { None }
+        )
       )
     }
   }
@@ -488,7 +510,7 @@ final case class Session[S, M, A, O](
         case Some(Choice.Deliver(_)) | Some(Choice.Drop(_)) =>
           Some(Primary("Deliver next", UiEvent.Forward, None))
         case Some(Choice.Fire(node, action)) =>
-          Some(Primary(s"${actionLabel(action)} node ${node.value}", UiEvent.Forward, None))
+          Some(Primary(s"Node ${node.value}: ${actionLabel(action)}", UiEvent.Forward, None))
         case None => Some(Primary("Run again", UiEvent.Restart, None))
       }
     }

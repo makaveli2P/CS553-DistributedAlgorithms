@@ -4,6 +4,8 @@ import com.raquo.laminar.api.L.*
 import com.raquo.laminar.api.L.svg as s
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import cs553.core.Catalogue
+import cs553.core.Family
+import cs553.core.registry.Algorithm
 import cs553.core.registry.Registry
 import org.scalajs.dom
 
@@ -21,7 +23,7 @@ object Home {
     val later = Catalogue.algorithms.filter(e => Registry.find(e.id).isEmpty)
     div(
       cls("page", "home"),
-      headerTag(cls("bar"), span(cls("brand"), "CS553 Distributed Algorithms")),
+      headerTag(cls("bar"), span(cls("brand"), "Distributed Algorithms")),
       mainTag(
         h1("Which algorithm do you want to run?"),
         child.maybe <-- notice.map(_.map { n =>
@@ -32,22 +34,19 @@ object Home {
             n.text
           )
         }),
-        div(
-          cls("cards"),
-          ready.map { alg =>
-            a(
-              cls("card"),
-              href(Route.render(Route.Open(alg.id))),
-              title(alg.summary),
-              Thumbnail.of(alg).fold(placeholder)(picture),
-              div(
-                cls("card-label"),
-                span(cls("card-name"), alg.name),
-                span(cls("family"), alg.family.toString)
+        Family.values.toList.flatMap { family =>
+          val group = ready.filter(_.family == family)
+          if group.isEmpty then { Nil }
+          else {
+            List(
+              sectionTag(
+                cls("family-group"),
+                h2(cls("family-title"), family.toString),
+                div(cls("cards"), group.map(alg => card(alg)))
               )
             )
           }
-        ),
+        },
         if later.isEmpty then emptyNode
         else
           div(
@@ -64,6 +63,16 @@ object Home {
             )
           )
       )
+    )
+  }
+
+  private def card[S, M, A, O](alg: Algorithm[S, M, A, O]): HtmlElement = {
+    a(
+      cls("card"),
+      href(Route.render(Route.Open(alg.id))),
+      title(alg.summary),
+      Thumbnail.of(alg).fold(placeholder)(picture),
+      div(cls("card-label"), span(cls("card-name"), alg.name))
     )
   }
 

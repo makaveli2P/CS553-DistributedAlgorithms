@@ -156,7 +156,7 @@ object Canvas {
       },
       child <-- n.map(v => (Layout.labelSpot(v.at, v.side, v.lines.size), v.actions)).distinct.map {
         case (spot, actions) =>
-          s.g(actions.zipWithIndex.map { case (a, i) => action(id, a, spot, i, dispatch) })
+          s.g(Layout.actionBox(spot, actions).toList.map(box => action(id, actions, box, dispatch)))
       }
     )
   }
@@ -241,29 +241,28 @@ object Canvas {
     )
   }
 
-  /** A spontaneous action, drawn like an envelope next to its node. */
+  /** The one action chip of a node, drawn like an envelope next to the node. A node with one action
+    * shows it and fires it. A node with several actions shows a count and opens the inspector of
+    * the node, which lists the actions as buttons.
+    */
   private def action(
       id: NodeId,
-      a: ActionView,
-      spot: LabelSpot,
-      i: Int,
+      actions: List[ActionView],
+      box: Box,
       dispatch: Observer[UiEvent]
   ): Svg = {
-    val w = Layout.envelopeWidth(a.label)
-    val h = Layout.envelopeHeight
-    val (cx, step) = spot.side match {
-      case LabelSide.Above => (spot.x, -26.0)
-      case LabelSide.Below => (spot.x, 26.0)
-      case LabelSide.Right => (spot.x + w / 2, 26.0)
-      case LabelSide.Left  => (spot.x - w / 2, 26.0)
+    val w = box.width
+    val h = box.height
+    val text = Layout.actionText(actions).getOrElse("")
+    val (event, tip) = actions match {
+      case one :: Nil => (UiEvent.Fire(id, one.index), s"Node ${id.value}: ${one.label}")
+      case _          => (UiEvent.SelectNode(id), s"Node ${id.value}: choose an action")
     }
-    val cy = spot.actionY + step * i
-    val tip = s"Node ${id.value}: ${a.label}"
     s.g(
       s.cls("envelope", "action"),
-      s.cls("envelope--next") := a.next,
-      s.transform := s"translate($cx $cy)",
-      pressable(Val(tip), Val(UiEvent.Fire(id, a.index)), dispatch),
+      s.cls("envelope--next") := actions.exists(_.next),
+      s.transform := s"translate(${box.x + w / 2} ${box.y + h / 2})",
+      pressable(Val(tip), Val(event), dispatch),
       s.titleTag(tip),
       Mailbox.hit(w),
       s.rect(
@@ -274,7 +273,7 @@ object Canvas {
         s.height := h.toString,
         s.rx := "4"
       ),
-      s.text(s.y := "4", s.textAnchor := "middle", a.label)
+      s.text(s.y := "4", s.textAnchor := "middle", text)
     )
   }
 }

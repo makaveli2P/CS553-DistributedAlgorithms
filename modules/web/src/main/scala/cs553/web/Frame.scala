@@ -169,7 +169,8 @@ enum PanelView {
       waiting: List[String],
       lastMessage: Option[String],
       lastRule: Option[String],
-      decision: Option[String]
+      decision: Option[String],
+      actions: List[ActionView]
   )
   case EnvelopeInfo(envelope: EnvelopeView, canDeliver: Boolean)
 }
