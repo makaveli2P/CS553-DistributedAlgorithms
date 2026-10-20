@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [master, rewrite]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Runs on every push and every pull request, also from forks. Needs no Akka token.
+  core-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: sbt
+      - uses: sbt/setup-sbt@v1
+      - name: Format, lint, test core, link web
+        run: >-
+          sbt scalafmtSbtCheck scalafmtCheckAll "scalafixAll --check"
+          coreJVM/test coreJS/test web/fastLinkJS
+
+  # Job-level `if` cannot read `secrets`, so this job tells the next job if the token exists.
+  akka-token:
+    runs-on: ubuntu-latest
+    outputs:
+      present: ${{ steps.check.outputs.present }}
+    steps:
+      - id: check
+        run: echo "present=${{ secrets.AKKA_REPO_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
+  # Runs only when the repository has the secret AKKA_REPO_TOKEN. Fork pull requests skip it.
+  akka:
+    needs: akka-token
+    if: needs.akka-token.outputs.present == 'true'
+    runs-on: ubuntu-latest
+    env:
+      AKKA_REPO_TOKEN: ${{ secrets.AKKA_REPO_TOKEN }}
+      AKKA_LICENSE_KEY: ${{ secrets.AKKA_LICENSE_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: sbt
+      - uses: sbt/setup-sbt@v1
+      - name: Lint and test the Akka modules
+        run: sbt "actors/scalafixAll --check" "cli/scalafixAll --check" actors/test cli/compile
