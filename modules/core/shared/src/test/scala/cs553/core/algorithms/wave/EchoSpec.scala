@@ -10,6 +10,7 @@ import cs553.core.rng.Seed
 import cs553.core.topology.NodeAttrs
 import cs553.core.topology.Role
 import cs553.core.topology.Topology
+import cs553.core.trace.Inspect
 import cs553.core.trace.Outcome
 import cs553.core.trace.Policy
 import cs553.core.trace.Run
@@ -275,5 +276,17 @@ final class EchoSpec extends AnyFunSuite with ScalaCheckPropertyChecks with Eith
     assert(run.decisions.toList == List(NodeId(1) -> EchoOutput.WaveComplete))
     val states = finalStates(run)
     assert(ids(2, 3, 4, 5).forall(n => rootOf(states, n, Set.empty).contains(NodeId(1))))
+  }
+
+  test("Inspect gives labels and fields for the state, the message, the action and the output") {
+    val state = EchoState(Role.NonInitiator, EchoPhase.Waiting, Some(NodeId(3)), 2)
+    assert(Inspect[EchoState].label(state) == "waiting, received 2")
+    assert(
+      Inspect[EchoState].fields(state) ==
+        List("role" -> "NonInitiator", "phase" -> "Waiting", "parent" -> "3", "received" -> "2")
+    )
+    assert(Inspect[EchoMsg].label(EchoMsg.Token) == "Token")
+    assert(Inspect[EchoAction].label(EchoAction.Wake) == "Wake")
+    assert(Inspect[EchoOutput].label(EchoOutput.WaveComplete) == "WaveComplete")
   }
 }

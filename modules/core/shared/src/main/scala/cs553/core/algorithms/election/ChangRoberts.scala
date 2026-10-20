@@ -288,7 +288,9 @@ object ChangRoberts {
         )
     }
   }
+}
 
+object CrState {
   given Inspect[CrState] = new Inspect[CrState] {
     def label(s: CrState): String = s match {
       case CrState.Asleep(uid)         => s"asleep ${uid.value}"
@@ -311,7 +313,9 @@ object ChangRoberts {
       }
     }
   }
+}
 
+object CrMsg {
   given Inspect[CrMsg] = new Inspect[CrMsg] {
     def label(m: CrMsg): String = m match {
       case CrMsg.Elect(uid)  => s"Elect(${uid.value})"
@@ -322,14 +326,18 @@ object ChangRoberts {
       case CrMsg.Leader(uid) => List("uid" -> uid.value.toString)
     }
   }
+}
 
+object CrAction {
   given Inspect[CrAction] = new Inspect[CrAction] {
     def label(a: CrAction): String = a match {
       case CrAction.Wake => "Wake"
     }
     def fields(a: CrAction): List[(String, String)] = Nil
   }
+}
 
+object CrOutput {
   given Inspect[CrOutput] = new Inspect[CrOutput] {
     def label(o: CrOutput): String = o match {
       case CrOutput.Elected(uid)    => s"Elected(${uid.value})"

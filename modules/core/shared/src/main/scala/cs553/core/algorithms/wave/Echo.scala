@@ -250,7 +250,9 @@ object Echo {
       }
     }
   }
+}
 
+object EchoState {
   given Inspect[EchoState] = new Inspect[EchoState] {
     def label(s: EchoState): String = s.phase match {
       case EchoPhase.Idle    => "idle"
@@ -265,21 +267,27 @@ object Echo {
       "received" -> s.received.toString
     )
   }
+}
 
+object EchoMsg {
   given Inspect[EchoMsg] = new Inspect[EchoMsg] {
     def label(m: EchoMsg): String = m match {
       case EchoMsg.Token => "Token"
     }
     def fields(m: EchoMsg): List[(String, String)] = Nil
   }
+}
 
+object EchoAction {
   given Inspect[EchoAction] = new Inspect[EchoAction] {
     def label(a: EchoAction): String = a match {
       case EchoAction.Wake => "Wake"
     }
     def fields(a: EchoAction): List[(String, String)] = Nil
   }
+}
 
+object EchoOutput {
   given Inspect[EchoOutput] = new Inspect[EchoOutput] {
     def label(o: EchoOutput): String = o match {
       case EchoOutput.WaveComplete => "WaveComplete"

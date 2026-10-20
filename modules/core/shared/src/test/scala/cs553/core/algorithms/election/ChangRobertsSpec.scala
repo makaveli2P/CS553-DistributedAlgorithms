@@ -10,6 +10,7 @@ import cs553.core.topology.Role
 import cs553.core.topology.Topology
 import cs553.core.trace.Choice
 import cs553.core.trace.EnvelopeId
+import cs553.core.trace.Inspect
 import cs553.core.trace.Outcome
 import cs553.core.trace.Policy
 import cs553.core.trace.Run
@@ -279,5 +280,17 @@ final class ChangRobertsSpec extends AnyFunSuite with ScalaCheckPropertyChecks w
           Right((1 to size).toList)
       )
     }
+  }
+
+  test("Inspect gives labels and fields for the state, the message, the action and the output") {
+    assert(Inspect[CrMsg].label(CrMsg.Elect(Uid(7))) == "Elect(7)")
+    assert(Inspect[CrMsg].fields(CrMsg.Leader(Uid(9))) == List("uid" -> "9"))
+    assert(Inspect[CrAction].label(CrAction.Wake) == "Wake")
+    assert(Inspect[CrOutput].label(CrOutput.Follows(Uid(9))) == "Follows(9)")
+    assert(Inspect[CrState].label(CrState.Active(Uid(4))) == "active 4")
+    assert(
+      Inspect[CrState].fields(CrState.Follower(None, Uid(9))) ==
+        List("phase" -> "Follower", "uid" -> "none", "leader" -> "9")
+    )
   }
 }
