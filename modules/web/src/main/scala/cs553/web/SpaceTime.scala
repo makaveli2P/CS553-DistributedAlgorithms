@@ -91,6 +91,7 @@ object SpaceTime {
   private val minStepGap = 26.0
   private val maxStepGap = 52.0
   private val minLaneGap = 46.0
+  private val minPhoneLaneGap = 24.0
   private val maxLaneGap = 70.0
 
   def layout(model: SpaceModel, size: Size): SpaceLayout = {
@@ -104,7 +105,11 @@ object SpaceTime {
       case Orientation.Vertical => (size.height - labelSpace - 2 * margin, size.width - 2 * margin)
     }
     val stepGap = clamp(timeRoom / span, minStepGap, maxStepGap)
-    val laneGap = clamp(laneRoom / n, minLaneGap, maxLaneGap)
+    val laneGap = o match {
+      case Orientation.Horizontal => clamp(laneRoom / n, minLaneGap, maxLaneGap)
+      // On a phone the lanes always fit the width.
+      case Orientation.Vertical => clamp(laneRoom / n, minPhoneLaneGap, maxLaneGap)
+    }
     val timeLength = labelSpace + margin + span * stepGap + margin
     val laneLength = 2 * margin + n * laneGap
 

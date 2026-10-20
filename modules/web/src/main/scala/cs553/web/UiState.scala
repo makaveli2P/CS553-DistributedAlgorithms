@@ -45,7 +45,7 @@ object View {
     View(
       Panel.Closed,
       playing = false,
-      Speed.Slow,
+      Speed.Normal,
       CopyState.Idle,
       Layout.defaultSize,
       ViewMode.Graph

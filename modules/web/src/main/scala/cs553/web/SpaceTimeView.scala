@@ -67,7 +67,7 @@ object SpaceTimeView {
         )
       ),
       l.markers.map(marker),
-      l.lanes.map(lane),
+      l.lanes.map(lane(_, l.orientation == Orientation.Vertical)),
       List(now(l.now)),
       l.arrows.map(arrow),
       cutLine(l.cut),
@@ -75,7 +75,23 @@ object SpaceTimeView {
     )
   }
 
-  private def lane(l: SpaceLane): Svg = {
+  private def lane(l: SpaceLane, vertical: Boolean): Svg = {
+    val name = if vertical then { s"${l.node.value}" }
+    else { s"Node ${l.node.value}" }
+    def label(at: Point, anchor: String): Svg = {
+      s.text(
+        s.cls("st-label"),
+        s.x := at.x.toString,
+        s.y := (at.y + 4).toString,
+        s.textAnchor := anchor,
+        name
+      )
+    }
+    // On a phone the drawing scrolls down, so each lane has a label at both ends.
+    val labels =
+      if vertical then {
+        List(label(l.label, "middle"), label(Point(l.to.x, l.to.y + 24), "middle"))
+      } else { List(label(l.label, "start")) }
     s.g(
       s.line(
         s.cls("st-lane"),
@@ -84,13 +100,7 @@ object SpaceTimeView {
         s.x2 := l.to.x.toString,
         s.y2 := l.to.y.toString
       ),
-      s.text(
-        s.cls("st-label"),
-        s.x := l.label.x.toString,
-        s.y := (l.label.y + 4).toString,
-        s.textAnchor := "start",
-        s"Node ${l.node.value}"
-      )
+      labels
     )
   }
 
