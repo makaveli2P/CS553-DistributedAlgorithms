@@ -132,31 +132,43 @@ object ChangRoberts {
     * be initiators.
     */
   def randomRing(size: Int, seed: Seed): Either[NonEmptyList[TopologyError], Topology] = {
-    val start = Rng(seed)
-    val (afterShuffle, uids) = (size - 1 to 1 by -1).foldLeft((start, (1 to size).toVector)) {
-      case ((rng, acc), i) =>
-        val (next, j) = rng.nextInt(i + 1)
-        val swapped = (acc.lift(i), acc.lift(j)) match {
-          case (Some(a), Some(b)) => acc.updated(i, b).updated(j, a)
-          case _                  => acc
+    val drawn = for {
+      shuffled <- shuffle(Rng(seed), (1 to size).toVector)
+      (afterShuffle, uids) = shuffled
+      flipped <- (0 until size).foldLeft(Option((afterShuffle, Vector.empty[Int]))) {
+        case (state, _) =>
+          state.flatMap { case (rng, acc) =>
+            rng.nextInt(2).map { case (next, coin) => (next, acc :+ coin) }
+          }
+      }
+      (afterCoins, coins) = flipped
+      fallback = afterCoins.nextInt(size).fold(0)(_._2)
+    } yield {
+      val chosen = coins.indices.filter(i => coins.lift(i).contains(1)).toSet
+      val initiators = if chosen.isEmpty then { Set(fallback) }
+      else { chosen }
+      uids.zipWithIndex.map { case (uid, i) =>
+        val role = if initiators.contains(i) then { Role.Initiator }
+        else { Role.NonInitiator }
+        NodeId(i) -> NodeAttrs(role, Some(Uid(uid)), Map.empty)
+      }.toMap
+    }
+    Topology.ring(size, drawn.getOrElse(Map.empty))
+  }
+
+  /** A Fisher-Yates shuffle of `items` with the generator. */
+  private def shuffle[A](start: Rng, items: Vector[A]): Option[(Rng, Vector[A])] = {
+    (items.size - 1 to 1 by -1).foldLeft(Option((start, items))) { case (state, i) =>
+      state.flatMap { case (rng, acc) =>
+        rng.nextInt(i + 1).map { case (next, j) =>
+          val swapped = (acc.lift(i), acc.lift(j)) match {
+            case (Some(a), Some(b)) => acc.updated(i, b).updated(j, a)
+            case _                  => acc
+          }
+          (next, swapped)
         }
-        (next, swapped)
+      }
     }
-    val (afterCoins, coins) = (0 until size).foldLeft((afterShuffle, Vector.empty[Int])) {
-      case ((rng, acc), _) =>
-        val (next, coin) = rng.nextInt(2)
-        (next, acc :+ coin)
-    }
-    val (_, fallback) = afterCoins.nextInt(math.max(size, 1))
-    val chosen = (0 until size).filter(i => coins.lift(i).contains(1)).toSet
-    val initiators = if chosen.isEmpty then { Set(fallback) }
-    else { chosen }
-    val attrs = uids.zipWithIndex.map { case (uid, i) =>
-      val role = if initiators.contains(i) then { Role.Initiator }
-      else { Role.NonInitiator }
-      NodeId(i) -> NodeAttrs(role, Some(Uid(uid)), Map.empty)
-    }.toMap
-    Topology.ring(size, attrs)
   }
 
   val protocol: Protocol[CrState, CrMsg, CrAction, CrOutput] =

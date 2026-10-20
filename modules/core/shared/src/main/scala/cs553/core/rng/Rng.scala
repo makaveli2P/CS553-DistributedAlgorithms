@@ -45,10 +45,20 @@ final case class Rng private (state: Long) {
     (new Rng(next), z2 ^ (z2 >>> 31))
   }
 
-  /** Returns a value in `[0, bound)` and the next generator. The bound must be positive. */
-  def nextInt(bound: Int): (Rng, Int) = {
-    val (rng, raw) = nextLong
-    (rng, ((raw >>> 1) % bound.toLong).toInt)
+  /** Returns a value in `[0, bound)` and the next generator, or `None` when the bound is not
+    * positive.
+    */
+  def nextInt(bound: Int): Option[(Rng, Int)] = {
+    if bound <= 0 then { None }
+    else {
+      val (rng, raw) = nextLong
+      Some((rng, ((raw >>> 1) % bound.toLong).toInt))
+    }
+  }
+
+  /** Returns one item of the list, picked with `nextInt`, or `None` when the list is empty. */
+  def pick[A](items: List[A]): Option[(Rng, A)] = {
+    nextInt(items.size).flatMap { case (rng, index) => items.lift(index).map(a => (rng, a)) }
   }
 }
 

@@ -69,8 +69,7 @@ object Simulator {
     def pick(enabled: List[Choice[A]]): Option[(Choice[A], Cursor[A])] = {
       rng match {
         case Some(r) =>
-          val (nextRng, index) = r.nextInt(enabled.size)
-          enabled.lift(index).map(c => (c, Cursor(Some(nextRng), script)))
+          r.pick(enabled).map { case (nextRng, c) => (c, Cursor(Some(nextRng), script)) }
         case None =>
           script match {
             case head :: tail => Some((head, Cursor(None, tail)))
