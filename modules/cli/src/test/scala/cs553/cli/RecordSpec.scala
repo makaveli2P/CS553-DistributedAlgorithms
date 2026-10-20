@@ -56,11 +56,10 @@ final class RecordSpec
   }
 
   test(
-    "Args rejects a record command without an engine, with the free engine or with bad options"
+    "Args rejects a record command without an engine or with bad options"
   ) {
     val bad = List(
       "record --alg echo --preset inputEcho",
-      "record --engine free --alg echo --preset inputEcho",
       "record --engine mediated --preset inputEcho",
       "record --engine mediated --alg echo",
       "record --engine mediated --alg echo --preset inputEcho --ring 3",
@@ -68,7 +67,24 @@ final class RecordSpec
     )
     bad.foreach(line => assert(Args.parse(line.split(" ").toList).isLeft, line))
     val free = Args.parse("record --engine free --alg echo --preset inputEcho".split(" ").toList)
-    assert(free.left.value.contains("M7"))
+    assert(
+      free.value == Command.Record(record("record --engine free --alg echo --preset inputEcho"))
+    )
+  }
+
+  test("record runs the free-run engine and writes a trace with the engine AkkaFreeRun") {
+    given Timeout = Timeout(guard)
+    given ExecutionContext = system.executionContext
+    val args = record("record --engine free --alg chang-roberts --preset ring-6 --seed 7")
+    val probe = TestProbe[Either[String, Report]]()(using system)
+    Record.run(system, args).foreach(probe.ref ! _)
+    val report = probe.receiveMessage(guard).value
+    assert(report.text.headOption.exists(_.contains("in the free-run Akka engine")))
+    val run = RunJson.read[CrState, CrMsg, CrAction, CrOutput](report.json).value
+    assert(run.trace.collect { case TraceEvent.Started(_, e, _) =>
+      e
+    } == Vector(Engine.AkkaFreeRun))
+    assert(run.decisions.size == 1)
   }
 
   test("Record.plan names the valid algorithms and presets") {

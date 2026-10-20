@@ -11,12 +11,15 @@ import cs553.core.ids.AlgorithmId
 import cs553.core.protocol.Protocol
 import cs553.core.rng.Seed
 import cs553.core.topology.Preset
+import cs553.core.trace.Choice
+import cs553.core.trace.Engine
 import cs553.core.trace.Inspect
 import cs553.core.trace.Overlay
 import cs553.core.trace.Policy
 import cs553.core.trace.Run
 import cs553.core.trace.RunSpec
 import cs553.core.trace.StopRule
+import cs553.core.trace.TraceEvent
 import cs553.core.world.RunError
 import cs553.core.world.Simulation
 import cs553.core.world.Simulator
@@ -84,6 +87,27 @@ final case class Algorithm[S, M, A, O](
 
   def readTrace(text: String): Either[NonEmptyList[TraceError], Run[S, M, A, O]] = {
     RunJson.read[S, M, A, O](text)
+  }
+
+  /** The recorded Akka run of this algorithm on its default preset (seed 1), as a simulation. A
+    * recording is a legal schedule of the pure model, so the replay of its choices gives the same
+    * events. `None` when the build has no recording for `engine`.
+    */
+  def recording(engine: Engine): Option[Either[String, Simulation[S, M, A, O]]] = {
+    Recordings.text(id, engine).map { text =>
+      for {
+        run <- readTrace(text).left.map(_.toList.map(_.toString).mkString("; "))
+        started <- run.trace
+          .collectFirst { case TraceEvent.Started(spec, _, _) => spec }
+          .toRight("the recording has no start")
+        choices = run.trace.toList.collect {
+          case TraceEvent.Stepped(_, _, cause, _, _, _) => cause
+          case TraceEvent.Rejected(_, _, cause, _)      => cause
+          case TraceEvent.Dropped(_, dropped)           => Choice.Drop(dropped)
+        }
+        sim <- Simulator.replay(protocol, started, choices).left.map(_.toString)
+      } yield sim
+    }
   }
 
   /** The URL fragment of a run. A topology that equals a preset goes in as the preset name. */

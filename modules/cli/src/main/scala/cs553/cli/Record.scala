@@ -3,6 +3,7 @@ package cs553.cli
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.SpawnProtocol
 import akka.util.Timeout
+import cs553.actors.FreeRun
 import cs553.actors.MediatedEngine
 import cs553.actors.RunGuardian
 import cs553.core.registry.Algorithm
@@ -14,8 +15,9 @@ import cs553.core.topology.Preset
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 
-/** The `record` command: one run of a registry algorithm on one of its presets in the mediated Akka
-  * engine. The result is the same trace format as `simulate`, with the engine `AkkaMediated`.
+/** The `record` command: one run of a registry algorithm on one of its presets in the mediated or
+  * the free-run Akka engine. The result is the same trace format as `simulate`, with the engine
+  * `AkkaMediated` or `AkkaFreeRun`.
   *
   * `plan` is pure. `run` starts the actors and returns a `Future`. Only `Main` waits for it.
   */
@@ -48,6 +50,7 @@ object Record {
       case Right((alg, preset)) =>
         args.engine match {
           case RecordEngine.Mediated => mediated(system, alg.algorithm, preset, args)
+          case RecordEngine.Free     => free(system, alg.algorithm, preset, args)
         }
     }
   }
@@ -71,6 +74,28 @@ object Record {
         )
         Right(Report(header :: lines, a.writeTracePretty(run) + "\n"))
       case RunGuardian.Failed(error) => Left(s"the mediated engine failed: $error")
+    }
+  }
+
+  private def free[S, M, A, O](
+      system: ActorSystem[SpawnProtocol.Command],
+      a: Algorithm[S, M, A, O],
+      preset: Preset,
+      args: RecordArgs
+  )(using Timeout, ExecutionContext): Future[Either[String, Report]] = {
+    val spec = a.spec(preset, Seed(args.seed))
+    FreeRun.run(system, runName(args), a.protocol, spec).map {
+      case RunGuardian.Finished(run) =>
+        val header = s"${a.name} on ${preset.name} in the free-run Akka engine, " +
+          s"seed ${args.seed}. Each run can give a different order."
+        val lines = Render.lines(run)(using
+          a.inspectState,
+          a.inspectMsg,
+          a.inspectAction,
+          a.inspectOutput
+        )
+        Right(Report(header :: lines, a.writeTracePretty(run) + "\n"))
+      case RunGuardian.Failed(error) => Left(s"the free-run engine failed: $error")
     }
   }
 }

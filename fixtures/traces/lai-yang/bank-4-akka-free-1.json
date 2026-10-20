@@ -1,0 +1,977 @@
+{
+  "trace" : [
+    {
+      "Started" : {
+        "spec" : {
+          "algorithm" : "lai-yang",
+          "topology" : {
+            "nodes" : [
+              0,
+              1,
+              2,
+              3
+            ],
+            "edges" : [
+              {
+                "from" : 0,
+                "to" : 1
+              },
+              {
+                "from" : 1,
+                "to" : 2
+              },
+              {
+                "from" : 1,
+                "to" : 3
+              },
+              {
+                "from" : 2,
+                "to" : 0
+              },
+              {
+                "from" : 2,
+                "to" : 3
+              },
+              {
+                "from" : 3,
+                "to" : 0
+              }
+            ],
+            "attrs" : {
+              "0" : {
+                "role" : {
+                  "Initiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  "balance" : "10",
+                  "budget" : "3"
+                }
+              },
+              "1" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  "balance" : "20",
+                  "budget" : "2"
+                }
+              },
+              "2" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  "balance" : "5",
+                  "budget" : "2"
+                }
+              },
+              "3" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  "balance" : "15",
+                  "budget" : "2"
+                }
+              }
+            }
+          },
+          "order" : {
+            "AnyOrder" : {
+              
+            }
+          },
+          "policy" : {
+            "Seeded" : {
+              "seed" : "1"
+            }
+          },
+          "stop" : {
+            "AtFirstDecision" : {
+              
+            }
+          },
+          "stepLimit" : 1000
+        },
+        "engine" : {
+          "AkkaFreeRun" : {
+            
+          }
+        },
+        "initial" : {
+          "0" : {
+            "role" : {
+              "Initiator" : {
+                
+              }
+            },
+            "balance" : 10,
+            "budget" : 3,
+            "sentWhite" : {
+              "1" : 0
+            },
+            "receivedWhite" : {
+              "2" : 0,
+              "3" : 0
+            },
+            "phase" : {
+              "White" : {
+                
+              }
+            }
+          },
+          "1" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "balance" : 20,
+            "budget" : 2,
+            "sentWhite" : {
+              "2" : 0,
+              "3" : 0
+            },
+            "receivedWhite" : {
+              "0" : 0
+            },
+            "phase" : {
+              "White" : {
+                
+              }
+            }
+          },
+          "2" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "balance" : 5,
+            "budget" : 2,
+            "sentWhite" : {
+              "0" : 0,
+              "3" : 0
+            },
+            "receivedWhite" : {
+              "1" : 0
+            },
+            "phase" : {
+              "White" : {
+                
+              }
+            }
+          },
+          "3" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "balance" : 15,
+            "budget" : 2,
+            "sentWhite" : {
+              "0" : 0
+            },
+            "receivedWhite" : {
+              "1" : 0,
+              "2" : 0
+            },
+            "phase" : {
+              "White" : {
+                
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 1,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "node" : 0,
+        "cause" : {
+          "Fire" : {
+            "node" : 0,
+            "action" : {
+              "Spend" : {
+                "to" : 1,
+                "amount" : 1
+              }
+            }
+          }
+        },
+        "rule" : "spend-white",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "balance" : 9,
+          "budget" : 2,
+          "sentWhite" : {
+            "1" : 1
+          },
+          "receivedWhite" : {
+            "2" : 0,
+            "3" : 0
+          },
+          "phase" : {
+            "White" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 0,
+            "to" : 1,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 1,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "env" : {
+          "id" : {
+            "from" : 0,
+            "to" : 1,
+            "seq" : 0
+          },
+          "msg" : {
+            "Transfer" : {
+              "amount" : 1,
+              "color" : {
+                "White" : {
+                  
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 2,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "node" : 1,
+        "cause" : {
+          "Fire" : {
+            "node" : 1,
+            "action" : {
+              "Spend" : {
+                "to" : 3,
+                "amount" : 1
+              }
+            }
+          }
+        },
+        "rule" : "spend-white",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 19,
+          "budget" : 1,
+          "sentWhite" : {
+            "2" : 0,
+            "3" : 1
+          },
+          "receivedWhite" : {
+            "0" : 0
+          },
+          "phase" : {
+            "White" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 1,
+            "to" : 3,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 2,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "env" : {
+          "id" : {
+            "from" : 1,
+            "to" : 3,
+            "seq" : 0
+          },
+          "msg" : {
+            "Transfer" : {
+              "amount" : 1,
+              "color" : {
+                "White" : {
+                  
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 3,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "node" : 2,
+        "cause" : {
+          "Fire" : {
+            "node" : 2,
+            "action" : {
+              "Spend" : {
+                "to" : 3,
+                "amount" : 5
+              }
+            }
+          }
+        },
+        "rule" : "spend-white",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 0,
+          "budget" : 1,
+          "sentWhite" : {
+            "0" : 0,
+            "3" : 1
+          },
+          "receivedWhite" : {
+            "1" : 0
+          },
+          "phase" : {
+            "White" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 2,
+            "to" : 3,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 3,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "env" : {
+          "id" : {
+            "from" : 2,
+            "to" : 3,
+            "seq" : 0
+          },
+          "msg" : {
+            "Transfer" : {
+              "amount" : 5,
+              "color" : {
+                "White" : {
+                  
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 4,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "node" : 3,
+        "cause" : {
+          "Fire" : {
+            "node" : 3,
+            "action" : {
+              "Spend" : {
+                "to" : 0,
+                "amount" : 5
+              }
+            }
+          }
+        },
+        "rule" : "spend-white",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 10,
+          "budget" : 1,
+          "sentWhite" : {
+            "0" : 1
+          },
+          "receivedWhite" : {
+            "1" : 0,
+            "2" : 0
+          },
+          "phase" : {
+            "White" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 3,
+            "to" : 0,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 4,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "env" : {
+          "id" : {
+            "from" : 3,
+            "to" : 0,
+            "seq" : 0
+          },
+          "msg" : {
+            "Transfer" : {
+              "amount" : 5,
+              "color" : {
+                "White" : {
+                  
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 5,
+          "local" : 2,
+          "lamport" : 2
+        },
+        "node" : 0,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 3,
+              "to" : 0,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "receive-white",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "balance" : 14,
+          "budget" : 2,
+          "sentWhite" : {
+            "1" : 1
+          },
+          "receivedWhite" : {
+            "2" : 0,
+            "3" : 1
+          },
+          "phase" : {
+            "White" : {
+              
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 6,
+          "local" : 2,
+          "lamport" : 2
+        },
+        "node" : 1,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 0,
+              "to" : 1,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "receive-white",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 20,
+          "budget" : 1,
+          "sentWhite" : {
+            "2" : 0,
+            "3" : 1
+          },
+          "receivedWhite" : {
+            "0" : 1
+          },
+          "phase" : {
+            "White" : {
+              
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 7,
+          "local" : 2,
+          "lamport" : 2
+        },
+        "node" : 3,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 2,
+              "to" : 3,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "receive-white",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 15,
+          "budget" : 1,
+          "sentWhite" : {
+            "0" : 1
+          },
+          "receivedWhite" : {
+            "1" : 0,
+            "2" : 1
+          },
+          "phase" : {
+            "White" : {
+              
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 8,
+          "local" : 3,
+          "lamport" : 3
+        },
+        "node" : 0,
+        "cause" : {
+          "Fire" : {
+            "node" : 0,
+            "action" : {
+              "Initiate" : {
+                
+              }
+            }
+          }
+        },
+        "rule" : "initiate",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "balance" : 14,
+          "budget" : 2,
+          "sentWhite" : {
+            "1" : 1
+          },
+          "receivedWhite" : {
+            "2" : 0,
+            "3" : 1
+          },
+          "phase" : {
+            "Recording" : {
+              "record" : {
+                "trigger" : {
+                  "Initiated" : {
+                    
+                  }
+                },
+                "balance" : 14,
+                "expected" : {
+                  
+                },
+                "channels" : {
+                  
+                }
+              }
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 0,
+            "to" : 1,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 8,
+          "local" : 3,
+          "lamport" : 3
+        },
+        "env" : {
+          "id" : {
+            "from" : 0,
+            "to" : 1,
+            "seq" : 1
+          },
+          "msg" : {
+            "Control" : {
+              "preSnapshotCount" : 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 9,
+          "local" : 3,
+          "lamport" : 3
+        },
+        "node" : 1,
+        "cause" : {
+          "Fire" : {
+            "node" : 1,
+            "action" : {
+              "Spend" : {
+                "to" : 3,
+                "amount" : 1
+              }
+            }
+          }
+        },
+        "rule" : "spend-white",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 19,
+          "budget" : 0,
+          "sentWhite" : {
+            "2" : 0,
+            "3" : 2
+          },
+          "receivedWhite" : {
+            "0" : 1
+          },
+          "phase" : {
+            "White" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 1,
+            "to" : 3,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 9,
+          "local" : 3,
+          "lamport" : 3
+        },
+        "env" : {
+          "id" : {
+            "from" : 1,
+            "to" : 3,
+            "seq" : 1
+          },
+          "msg" : {
+            "Transfer" : {
+              "amount" : 1,
+              "color" : {
+                "White" : {
+                  
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 10,
+          "local" : 3,
+          "lamport" : 3
+        },
+        "node" : 3,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 1,
+              "to" : 3,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "receive-white",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 16,
+          "budget" : 1,
+          "sentWhite" : {
+            "0" : 1
+          },
+          "receivedWhite" : {
+            "1" : 1,
+            "2" : 1
+          },
+          "phase" : {
+            "White" : {
+              
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 11,
+          "local" : 4,
+          "lamport" : 4
+        },
+        "node" : 1,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 0,
+              "to" : 1,
+              "seq" : 1
+            }
+          }
+        },
+        "rule" : "snapshot-on-control",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 19,
+          "budget" : 0,
+          "sentWhite" : {
+            "2" : 0,
+            "3" : 2
+          },
+          "receivedWhite" : {
+            "0" : 1
+          },
+          "phase" : {
+            "Done" : {
+              "record" : {
+                "trigger" : {
+                  "ControlMessage" : {
+                    
+                  }
+                },
+                "balance" : 19,
+                "expected" : {
+                  "0" : 1
+                },
+                "channels" : {
+                  
+                }
+              }
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 1,
+            "to" : 2,
+            "seq" : 0
+          },
+          {
+            "from" : 1,
+            "to" : 3,
+            "seq" : 2
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 11,
+          "local" : 4,
+          "lamport" : 4
+        },
+        "env" : {
+          "id" : {
+            "from" : 1,
+            "to" : 2,
+            "seq" : 0
+          },
+          "msg" : {
+            "Control" : {
+              "preSnapshotCount" : 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 11,
+          "local" : 4,
+          "lamport" : 4
+        },
+        "env" : {
+          "id" : {
+            "from" : 1,
+            "to" : 3,
+            "seq" : 2
+          },
+          "msg" : {
+            "Control" : {
+              "preSnapshotCount" : 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "Decided" : {
+        "at" : {
+          "step" : 11,
+          "local" : 4,
+          "lamport" : 4
+        },
+        "node" : 1,
+        "output" : {
+          "Recorded" : {
+            "balance" : 19,
+            "channels" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Finished" : {
+        "at" : {
+          "step" : 11,
+          "local" : 0,
+          "lamport" : 0
+        },
+        "outcome" : {
+          "AlgorithmDecided" : {
+            
+          }
+        }
+      }
+    }
+  ]
+}

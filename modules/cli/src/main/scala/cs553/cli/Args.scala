@@ -43,6 +43,9 @@ enum RecordEngine {
 
   /** The mediated engine: channel actors and a Controller that releases one step at a time. */
   case Mediated
+
+  /** The free-run engine: nodes send to each other directly, and the dispatcher picks the order. */
+  case Free
 }
 
 /** The arguments of `record`: one registry algorithm on one of its presets. */
@@ -67,10 +70,10 @@ object Args {
   val usage: String =
     """Usage:
       |  simulate --alg echo|chang-roberts (--topology FILE.dot | --ring N) [options]
-      |  record --engine mediated --alg ID --preset NAME [--seed N] [--out FILE.json]
+      |  record --engine mediated|free --alg ID --preset NAME [--seed N] [--out FILE.json]
       |
-      |simulate runs the Simulator. record runs the mediated Akka engine on a preset of the
-      |algorithm registry, and writes the same trace format.
+      |simulate runs the Simulator. record runs an Akka engine on a preset of the algorithm
+      |registry, and writes the same trace format. The free engine gives a different trace each time.
       |
       |Options of simulate:
       |  --seed N         the seed of the scheduler (default 0)
@@ -157,8 +160,8 @@ object Args {
     for {
       engine <- opts.get("--engine") match {
         case Some("mediated") => Right(RecordEngine.Mediated)
-        case Some("free")     => Left("the free-run engine comes in milestone M7; use mediated")
-        case Some(other)      => Left(s"unknown engine '$other' (use mediated)")
+        case Some("free")     => Right(RecordEngine.Free)
+        case Some(other)      => Left(s"unknown engine '$other' (use mediated or free)")
         case None             => Left("the option --engine is necessary")
       }
       alg <- opts.get("--alg").toRight("the option --alg is necessary")

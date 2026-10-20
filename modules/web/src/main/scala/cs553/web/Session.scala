@@ -5,11 +5,13 @@ import cs553.core.ids.NodeId
 import cs553.core.protocol.ChannelOrder
 import cs553.core.protocol.OrderPolicy
 import cs553.core.registry.Algorithm
+import cs553.core.registry.Recordings
 import cs553.core.rng.Seed
 import cs553.core.topology.Edge
 import cs553.core.trace.ChannelRecord
 import cs553.core.trace.Choice
 import cs553.core.trace.EdgeStyle
+import cs553.core.trace.Engine
 import cs553.core.trace.EnvelopeId
 import cs553.core.trace.Mark
 import cs553.core.trace.Outcome
@@ -35,8 +37,12 @@ final case class Session[S, M, A, O](
     sim: Simulation[S, M, A, O],
     cursor: Int,
     branchedAt: Option[Int],
-    refused: Option[String]
+    refused: Option[String],
+    source: RunSource = RunSource.Browser
 ) {
+
+  /** A recording of real Akka actors. The learner can scrub and play it, and nothing else. */
+  def recorded: Boolean = source != RunSource.Browser
 
   /** The index of the newest world. */
   def last: Int = sim.worlds.size - 1
@@ -59,7 +65,7 @@ final case class Session[S, M, A, O](
 
   /** The choice that "Deliver next" applies at the newest world. */
   def nextChoice: Option[Choice[A]] = {
-    if finished then { None }
+    if finished || recorded then { None }
     else {
       sim.last.flatMap { w =>
         Simulator.seededChoice(seed, w.step, World.enabled(alg.protocol, w))
@@ -73,7 +79,7 @@ final case class Session[S, M, A, O](
   }
 
   def deliver(id: EnvelopeId): Session[S, M, A, O] = {
-    if live then { applyChoice(Choice.Deliver(id)) }
+    if live && !recorded then { applyChoice(Choice.Deliver(id)) }
     else { this }
   }
 
@@ -85,8 +91,8 @@ final case class Session[S, M, A, O](
       action <- alg.protocol.actions(ctx, state).lift(index)
     } yield action
     offered match {
-      case Some(action) if live => applyChoice(Choice.Fire(node, action))
-      case Some(_) | None       => this
+      case Some(action) if live && !recorded => applyChoice(Choice.Fire(node, action))
+      case Some(_) | None                    => this
     }
   }
 
@@ -95,12 +101,13 @@ final case class Session[S, M, A, O](
   }
 
   /** One step forward: the next recorded world, or a seeded step at the newest world. */
-  def forward: Session[S, M, A, O] = if live then { deliverNext }
+  def forward: Session[S, M, A, O] = if recorded then { seek(cursor + 1) }
+  else if live then { deliverNext }
   else { seek(cursor + 1) }
 
   /** Starts a branch at the shown step: a new run that replays the first `cursor` choices. */
   def continueHere: Session[S, M, A, O] = {
-    if live then { this }
+    if live || recorded then { this }
     else {
       val k = cursor
       Simulator.replay(alg.protocol, spec, sim.choices.take(k)) match {
@@ -111,7 +118,20 @@ final case class Session[S, M, A, O](
   }
 
   def restart: Session[S, M, A, O] = {
-    Session.start(alg, spec).getOrElse(this)
+    if recorded then { seek(0) }
+    else { Session.start(alg, spec).getOrElse(this) }
+  }
+
+  /** The run from another source: the browser simulator on the default preset, or a recording. */
+  def withSource(next: RunSource): Session[S, M, A, O] = {
+    if next == source then { this }
+    else {
+      val result = next.engine match {
+        case None         => Session.open(alg)
+        case Some(engine) => Session.recorded(alg, next, engine)
+      }
+      result.fold(error => copy(refused = Some(error)), identity)
+    }
   }
 
   def withPreset(name: String): Session[S, M, A, O] = {
@@ -125,9 +145,12 @@ final case class Session[S, M, A, O](
   def withOrder(order: ChannelOrder): Session[S, M, A, O] = rebuild(spec.copy(order = order))
 
   private def rebuild(next: RunSpec[A]): Session[S, M, A, O] = {
-    Session.start(alg, next) match {
-      case Left(error)    => copy(refused = Some(error))
-      case Right(session) => session
+    if recorded then { this }
+    else {
+      Session.start(alg, next) match {
+        case Left(error)    => copy(refused = Some(error))
+        case Right(session) => session
+      }
     }
   }
 
@@ -238,7 +261,8 @@ final case class Session[S, M, A, O](
       val head = queue.headOption.map(b => alg.inspectMsg.label(b.env.msg))
       edge -> queue.map { b =>
         val blocked =
-          if !live then { Some(Blocked.Past) }
+          if recorded then { Some(Blocked.Recorded) }
+          else if !live then { Some(Blocked.Past) }
           else if enabled.contains(b.env.id) then { None }
           else { head.map(Blocked.Behind(_)) }
         b -> blocked
@@ -370,7 +394,7 @@ final case class Session[S, M, A, O](
       state: S,
       next: Option[Choice[A]]
   ): List[ActionView] = {
-    if live then {
+    if live && !recorded then {
       w.ctxs.get(node).toList.flatMap { ctx =>
         alg.protocol.actions(ctx, state).zipWithIndex.map { case (a, i) =>
           ActionView(i, actionLabel(a), next.contains(Choice.Fire(node, a)))
@@ -453,8 +477,8 @@ final case class Session[S, M, A, O](
             val text =
               s"${alg.inspectMsg.label(buffered.env.msg)} from node ${buffered.env.id.from.value}"
             blocked match {
-              case Some(Blocked.Behind(_))   => s"$text (behind the first)"
-              case Some(Blocked.Past) | None => text
+              case Some(Blocked.Behind(_))                            => s"$text (behind the first)"
+              case Some(Blocked.Past) | Some(Blocked.Recorded) | None => text
             }
           }
         }
@@ -486,7 +510,21 @@ final case class Session[S, M, A, O](
         Some(s"${alg.name} needs ${Session.orderName(order)} channels.")
       case OrderPolicy.Default(_) => None
     }
+    val sources = RunSource.values.toList.filter { src =>
+      src.engine.forall(engine => Recordings.text(alg.id, engine).isDefined)
+    }
+    val line = source match {
+      case RunSource.Browser          => None
+      case RunSource.RecordedMediated => Some(Session.recordingLine)
+      case RunSource.RecordedFree     =>
+        Some(
+          s"${Session.recordingLine} No node saw the whole network, so it stopped at the first decision."
+        )
+    }
     SettingsView(
+      source,
+      sources,
+      line,
       alg.presets.map(p => PresetChoice(p.name, p.title)),
       presetName,
       seed.value,
@@ -497,7 +535,10 @@ final case class Session[S, M, A, O](
 
   /** The one primary action: a seeded step, a branch from a past step, or a new run at the end. */
   def primary: Option[Primary] = {
-    if !live then {
+    if recorded then {
+      if live then { Some(Primary("Replay from the start", UiEvent.Restart, None)) }
+      else { Some(Primary("Next step", UiEvent.Forward, None)) }
+    } else if !live then {
       Some(
         Primary(
           s"Continue from step $cursor",
@@ -522,6 +563,27 @@ final case class Session[S, M, A, O](
 }
 
 object Session {
+
+  /** The one quiet line of a recording. */
+  val recordingLine: String = "This is a recording of real Akka actors."
+
+  /** A recording of `alg` by the engine of `source`, at step 0. */
+  def recorded[S, M, A, O](
+      alg: Algorithm[S, M, A, O],
+      source: RunSource,
+      engine: Engine
+  ): Either[String, Session[S, M, A, O]] = {
+    alg.recording(engine) match {
+      case None              => Left(s"${alg.name} has no ${source.label.toLowerCase}.")
+      case Some(Left(error)) => Left(error)
+      case Some(Right(sim))  =>
+        sim.run.trace
+          .collectFirst { case TraceEvent.Started(spec, _, _) => spec }
+          .toRight("The recording has no start.")
+          .flatMap(seededOnly)
+          .map(spec => Session(alg, spec, sim, 0, None, None, source))
+    }
+  }
 
   def stepOf[S, M, A, O](e: TraceEvent[S, M, A, O]): Int = e match {
     case TraceEvent.Started(_, _, _)           => 0

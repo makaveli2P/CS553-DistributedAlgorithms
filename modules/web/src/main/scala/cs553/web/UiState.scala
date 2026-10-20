@@ -67,6 +67,7 @@ enum UiEvent {
   case ChoosePreset(name: String)
   case ChooseSeed(seed: Long)
   case ChooseOrder(order: ChannelOrder)
+  case ChooseSource(source: RunSource)
   case Copied
   case CopyFailed
   case Resized(size: Size)
@@ -165,6 +166,8 @@ object Ui {
         Page.Sandbox(session.withPreset(name), view.copy(playing = false))
       case UiEvent.ChooseSeed(seed) =>
         Page.Sandbox(session.withSeed(seed), view.copy(playing = false))
+      case UiEvent.ChooseSource(source) =>
+        Page.Sandbox(session.withSource(source), view.copy(playing = false, panel = Panel.Closed))
       case UiEvent.ChooseOrder(order) =>
         Page.Sandbox(session.withOrder(order), view.copy(playing = false))
       case UiEvent.Copied        => Page.Sandbox(session, view.copy(copy = CopyState.Copied))

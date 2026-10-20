@@ -379,6 +379,8 @@ a.card:hover .card-name { color: var(--accent); }
   background: var(--surface);
 }
 .choice-row { display: flex; gap: 18px; }
+.choice-col { display: flex; flex-direction: column; gap: 6px; }
+.field select:disabled, .field input:disabled { opacity: 0.55; cursor: default; }
 .choice { display: flex; align-items: center; gap: 6px; }
 .hint { font-size: 13px; color: var(--muted); margin: 0; }
 .panel p.hint { margin: 0; }
