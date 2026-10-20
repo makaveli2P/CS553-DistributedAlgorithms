@@ -63,7 +63,7 @@ final class CliSpec extends AnyFunSuite with EitherValues {
 
   test("Args rejects bad input with a message") {
     val bad = List(
-      "simulate --alg tarry --ring 3",
+      "simulate --alg paxos --ring 3",
       "simulate --alg echo",
       "simulate --alg echo --ring 3 --topology a.dot",
       "simulate --alg echo --topology a.dot --seed x",
