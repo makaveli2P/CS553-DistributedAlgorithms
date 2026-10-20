@@ -20,10 +20,15 @@ import cs553.core.trace.StopRule
 import cs553.core.world.RunError
 import cs553.core.world.Simulation
 import cs553.core.world.Simulator
+import cs553.core.world.World
 import io.circe.Codec
 
 /** One algorithm with all that the UI needs: the protocol, the `Inspect` and `Overlay` givens for
-  * the render edge, the codecs for traces and links, and the topology presets.
+  * the render edge, the codecs for traces and links, the topology presets and the invariant.
+  *
+  * `invariant` checks one world: the node states, the buffered envelopes and the topology. It gives
+  * `None` when the invariant holds, or one line for the learner when it breaks, for example "Total
+  * 30 is not 35: a transfer was dropped". The web shows the line only when it breaks.
   *
   * The UI works with `AnyAlgorithm`, which hides the four type parameters.
   */
@@ -32,7 +37,8 @@ final case class Algorithm[S, M, A, O](
     name: String,
     family: Family,
     summary: String,
-    presets: List[Preset]
+    presets: List[Preset],
+    invariant: World[S, M] => Option[String] = Algorithm.noInvariant[S, M]
 )(using
     val inspectState: Inspect[S],
     val inspectMsg: Inspect[M],
@@ -96,6 +102,9 @@ object Algorithm {
 
   /** The step limit of a UI run. Each preset run stops well before it. */
   val stepLimit: Int = 1000
+
+  /** The invariant of an algorithm that has no check. */
+  def noInvariant[S, M]: World[S, M] => Option[String] = _ => None
 }
 
 /** An `Algorithm` with its type parameters hidden, so that one list can hold all algorithms.

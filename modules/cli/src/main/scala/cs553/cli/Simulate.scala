@@ -5,6 +5,8 @@ import cs553.core.algorithms.election.ChangRoberts
 import cs553.core.algorithms.wave.Echo
 import cs553.core.codec.RunJson
 import cs553.core.protocol.Protocol
+import cs553.core.registry.Algorithm
+import cs553.core.registry.Registry
 import cs553.core.rng.Rng
 import cs553.core.rng.Seed
 import cs553.core.topology.Topology
@@ -29,8 +31,12 @@ object Simulate {
     for {
       loaded <- load(args, dot)
       report <- args.alg match {
-        case Alg.Echo         => echo(args, loaded)
-        case Alg.ChangRoberts => changRoberts(args, loaded)
+        case Alg.Echo           => echo(args, loaded)
+        case Alg.ChangRoberts   => changRoberts(args, loaded)
+        case Alg.Registered(id) =>
+          Registry.find(id).toRight(s"unknown algorithm ${id.value}").flatMap { any =>
+            registered(any.algorithm, args, loaded)
+          }
       }
     } yield report
   }
@@ -52,6 +58,8 @@ object Simulate {
               .left
               .map(errors("cannot make the ring:", _))
           case Alg.Echo => Left("--ring is only for chang-roberts; give Echo a --topology")
+          case Alg.Registered(id) =>
+            Left(s"--ring is only for chang-roberts; give ${id.value} a --topology")
         }
     }
   }
@@ -86,6 +94,30 @@ object Simulate {
       }
       nodes = s"nodes: ${uids.mkString(", ")} (* marks an initiator)"
       report <- simulate(ChangRoberts.protocol, args, chosen, "Chang-Roberts", List(nodes))
+    } yield report
+  }
+
+  /** An algorithm of the registry on the loaded topology, with `--initiator` as the only initiator.
+    */
+  private def registered[S, M, A, O](
+      a: Algorithm[S, M, A, O],
+      args: SimulateArgs,
+      loaded: Topology
+  ): Either[String, Report] = {
+    for {
+      chosen <- args.initiator.fold[Either[String, Topology]](Right(loaded)) { n =>
+        loaded.withInitiators(Set(n)).left.map(errors("--initiator is not valid:", _))
+      }
+      report <- simulate(a.protocol, args, chosen, a.name, Nil)(using
+        a.inspectState,
+        a.inspectMsg,
+        a.inspectAction,
+        a.inspectOutput,
+        a.codecState,
+        a.codecMsg,
+        a.codecAction,
+        a.codecOutput
+      )
     } yield report
   }
 

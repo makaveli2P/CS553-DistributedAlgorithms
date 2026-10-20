@@ -17,7 +17,9 @@ import cs553.core.topology.Topology
 import cs553.core.topology.TopologyError
 import cs553.core.trace.Inspect
 import cs553.core.trace.Mark
+import cs553.core.trace.NodeFill
 import cs553.core.trace.Overlay
+import cs553.core.world.World
 import io.circe.Codec
 
 import scala.collection.immutable.SortedMap
@@ -70,6 +72,16 @@ final case class EchoState(
 object Echo {
 
   val id: AlgorithmId = AlgorithmId("echo")
+
+  /** The invariant that the web checks at each step: a node gets at most one token from each
+    * neighbour.
+    */
+  def invariant(w: World[EchoState, EchoMsg]): Option[String] = {
+    w.states.collectFirst {
+      case (node, s) if s.received > s.expected =>
+        s"Node ${node.value} received ${s.received} tokens but has only ${s.expected} neighbours."
+    }
+  }
 
   /** The rule ids. Each one names one case of a handler. */
   object Rules {
@@ -325,10 +337,17 @@ object EchoState {
     }
   }
 
-  /** The parent edges. Together they grow into the spanning tree of the wave. */
+  /** The parent edges, which grow into the spanning tree of the wave, and the fill of the initiator
+    * when it decides.
+    */
   given Overlay[EchoState] = new Overlay[EchoState] {
     def marks(states: SortedMap[NodeId, EchoState]): List[Mark] = {
-      states.toList.flatMap { case (node, s) => s.parent.map(Mark.TreeEdge(node, _)) }
+      val tree = states.toList.flatMap { case (node, s) => s.parent.map(Mark.treeEdge(node, _)) }
+      val decided = states.toList.collect {
+        case (node, s) if s.role == Role.Initiator && s.phase == EchoPhase.Decided =>
+          Mark.Fill(node, NodeFill.Chosen)
+      }
+      tree ++ decided
     }
   }
 }

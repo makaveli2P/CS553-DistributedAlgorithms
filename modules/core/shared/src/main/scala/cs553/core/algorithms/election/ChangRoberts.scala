@@ -19,8 +19,13 @@ import cs553.core.topology.Role
 import cs553.core.topology.Topology
 import cs553.core.topology.TopologyError
 import cs553.core.trace.Inspect
+import cs553.core.trace.Mark
+import cs553.core.trace.NodeFill
 import cs553.core.trace.Overlay
+import cs553.core.world.World
 import io.circe.Codec
+
+import scala.collection.immutable.SortedMap
 
 /** The messages of Chang-Roberts. */
 enum CrMsg derives Codec.AsObject {
@@ -73,6 +78,14 @@ enum CrState derives Codec.AsObject {
   * announcement. See `docs/algorithms/chang-roberts.md`.
   */
 object ChangRoberts {
+
+  /** The invariant that the web checks at each step: at most one node is the leader. */
+  def invariant(w: World[CrState, CrMsg]): Option[String] = {
+    val leaders = w.states.toList.collect {
+      case (node, CrState.Announcing(_) | CrState.Leader(_)) => node.value.toString
+    }
+    Option.when(leaders.size > 1)(s"Nodes ${leaders.mkString(", ")} are all leaders.")
+  }
 
   val id: AlgorithmId = AlgorithmId("chang-roberts")
 
@@ -305,7 +318,15 @@ object ChangRoberts {
 }
 
 object CrState {
-  given Overlay[CrState] = Overlay.none
+
+  /** The fill of the leader. */
+  given Overlay[CrState] = new Overlay[CrState] {
+    def marks(states: SortedMap[NodeId, CrState]): List[Mark] = {
+      states.toList.collect { case (node, CrState.Announcing(_) | CrState.Leader(_)) =>
+        Mark.Fill(node, NodeFill.Chosen)
+      }
+    }
+  }
 
   given Inspect[CrState] = new Inspect[CrState] {
 

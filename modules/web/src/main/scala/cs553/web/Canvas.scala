@@ -5,6 +5,8 @@ import com.raquo.laminar.api.L.svg as s
 import com.raquo.laminar.codecs.StringAsIsCodec
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import cs553.core.ids.NodeId
+import cs553.core.trace.EdgeStyle
+import cs553.core.trace.NodeFill
 import org.scalajs.dom
 
 /** The SVG canvas: edges, nodes, phase labels, actions and mailboxes. It draws a `Frame` and
@@ -39,6 +41,7 @@ object Canvas {
           )
         ),
         s.g(children <-- frame.map(_.edges).split(e => (e.from, e.to))((_, _, e) => edge(e))),
+        s.g(children <-- frame.map(_.notes).split(n => (n.from, n.to))((_, _, n) => note(n))),
         s.g(children <-- frame.map(_.nodes).split(_.id)((id, _, n) => node(id, n, dispatch))),
         s.g(
           children <-- frame
@@ -103,7 +106,7 @@ object Canvas {
     val line = e.map(ends)
     s.line(
       s.cls("edge"),
-      s.cls("edge--tree") <-- e.map(_.tree),
+      s.cls <-- e.map(_.style.map(edgeClass).toList),
       s.x1 <-- line.map(_._1.toString),
       s.y1 <-- line.map(_._2.toString),
       s.x2 <-- line.map(_._3.toString),
@@ -121,7 +124,13 @@ object Canvas {
       s.cls("node"),
       s.cls("node--current") <-- n.map(_.current),
       s.cls("node--decided") <-- n.map(_.decided),
-      s.cls("node--first") <-- n.map(_.first),
+      s.cls <-- n.map(_.fill.map(fillClass).toList),
+      child.maybe <-- n
+        .map(v => v.cutAt.map(step => (v.at, step)))
+        .distinct
+        .map(_.map { case (at, step) =>
+          cut(at, step)
+        }),
       s.g(
         s.cls("node-hit"),
         pressable(Val(s"Node ${id.value}"), Val(UiEvent.SelectNode(id)), dispatch),
@@ -147,6 +156,46 @@ object Canvas {
         case (spot, actions) =>
           s.g(actions.zipWithIndex.map { case (a, i) => action(id, a, spot, i, dispatch) })
       }
+    )
+  }
+
+  /** The CSS class of an edge style. */
+  def edgeClass(style: EdgeStyle): String = style match {
+    case EdgeStyle.Tree    => "edge--tree"
+    case EdgeStyle.Used    => "edge--used"
+    case EdgeStyle.Removed => "edge--removed"
+  }
+
+  /** The CSS class of a node fill. */
+  def fillClass(fill: NodeFill): String = fill match {
+    case NodeFill.Chosen     => "node--chosen"
+    case NodeFill.Decided    => "node--decided"
+    case NodeFill.Passive    => "node--passive"
+    case NodeFill.Red        => "node--red"
+    case NodeFill.White      => "node--white"
+    case NodeFill.Free       => "node--free"
+    case NodeFill.Deadlocked => "node--deadlocked"
+  }
+
+  /** A dashed ring around a node that took its local snapshot at `step`. */
+  private def cut(at: Point, step: Int): Svg = {
+    s.circle(
+      s.cls("node-cut"),
+      s.cx := at.x.toString,
+      s.cy := at.y.toString,
+      s.r := (Layout.nodeRadius + 5).toString,
+      s.titleTag(s"Local snapshot at step $step")
+    )
+  }
+
+  /** The text of a `Channel` mark next to its channel. */
+  private def note(n: Signal[NoteView]): Svg = {
+    s.text(
+      s.cls("channel-note"),
+      s.x <-- n.map(_.at.x.toString),
+      s.y <-- n.map(_.at.y.toString),
+      s.textAnchor := "middle",
+      child.text <-- n.map(_.text)
     )
   }
 

@@ -6,6 +6,7 @@ import cs553.core.algorithms.wave.EchoMsg
 import cs553.core.algorithms.wave.EchoOutput
 import cs553.core.algorithms.wave.EchoState
 import cs553.core.codec.RunJson
+import cs553.core.ids.AlgorithmId
 import cs553.core.ids.NodeId
 import cs553.core.protocol.ChannelOrder
 import cs553.core.rng.Rng
@@ -134,5 +135,17 @@ final class CliSpec extends AnyFunSuite with EitherValues {
     assert(Simulate.run(simulate("simulate --alg echo --ring 4"), None).isLeft)
     val bad = Simulate.run(simulate("simulate --alg echo --topology x.dot"), Some("graph {"))
     assert(bad.left.value.startsWith("x.dot is not a valid topology:"))
+  }
+
+  test("simulate runs any algorithm of the registry on a DOT file with the generic path") {
+    val dot =
+      """digraph { "0" [uid=3, initiator=true]; "1" [uid=5]; "2" [uid=4]; 0 -> 1; 1 -> 2; 2 -> 0 }"""
+    val args = simulate("simulate --alg chang-roberts --topology r.dot --seed 2")
+      .copy(alg = Alg.Registered(AlgorithmId("chang-roberts")))
+    val report = Simulate.run(args, Some(dot)).value
+    assert(report.text.headOption.exists(_.startsWith("Chang-Roberts on 3 nodes")))
+    assert(report.text.count(_.contains("DECIDES: it is the leader")) == 1)
+    val ring = args.copy(source = Source.Ring(3))
+    assert(Simulate.run(ring, None).left.value.startsWith("--ring is only for chang-roberts"))
   }
 }

@@ -3,13 +3,18 @@ package cs553.cli
 import cs553.core.ids.AlgorithmId
 import cs553.core.ids.NodeId
 import cs553.core.protocol.ChannelOrder
+import cs553.core.registry.Registry
 
 import scala.annotation.tailrec
 import scala.util.Try
 
-/** The algorithms that the CLI can run. */
+/** The algorithms that the CLI can run. Echo and Chang-Roberts have their own topology options.
+  * Each other algorithm of the registry runs as `Registered` on a DOT file, with no change to the
+  * CLI.
+  */
 enum Alg {
   case Echo, ChangRoberts
+  case Registered(id: AlgorithmId)
 }
 
 /** Where the topology comes from. */
@@ -115,8 +120,14 @@ object Args {
       alg <- opts.get("--alg") match {
         case Some("echo")          => Right(Alg.Echo)
         case Some("chang-roberts") => Right(Alg.ChangRoberts)
-        case Some(other) => Left(s"unknown algorithm '$other' (use echo or chang-roberts)")
-        case None        => Left("the option --alg is necessary")
+        case Some(other)           =>
+          Registry
+            .find(AlgorithmId(other))
+            .map(a => Alg.Registered(a.id))
+            .toRight(
+              s"unknown algorithm '$other' (use ${Registry.all.map(_.id.value).mkString(", ")})"
+            )
+        case None => Left("the option --alg is necessary")
       }
       source <- (opts.get("--topology"), opts.get("--ring")) match {
         case (Some(path), None) => Right(Source.File(path))

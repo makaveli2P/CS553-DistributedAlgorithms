@@ -1,11 +1,14 @@
 package cs553.core.registry
 
+import cs553.core.Catalogue
 import cs553.core.algorithms.election.CrState
 import cs553.core.algorithms.wave.EchoState
 import cs553.core.ids.NodeId
 import cs553.core.rng.Seed
 import cs553.core.topology.Edge
+import cs553.core.trace.EdgeStyle
 import cs553.core.trace.Mark
+import cs553.core.trace.NodeFill
 import cs553.core.trace.Outcome
 import cs553.core.trace.TraceEvent
 import org.scalatest.funsuite.AnyFunSuite
@@ -14,8 +17,11 @@ import scala.collection.immutable.SortedMap
 
 final class RegistrySpec extends AnyFunSuite {
 
-  test("the registry holds Echo and Chang-Roberts, each with a distinct id") {
-    assert(Registry.all.map(_.id.value) == List("echo", "chang-roberts"))
+  test("the registry holds Echo and Chang-Roberts, in catalogue order, each with a distinct id") {
+    val ids = Registry.all.map(_.id)
+    assert(ids.contains(Registry.echo.id) && ids.contains(Registry.changRoberts.id))
+    assert(ids == Catalogue.algorithms.map(_.id).filter(ids.contains))
+    assert(ids.distinct == ids)
     Registry.all.foreach(alg => assert(Registry.find(alg.id).map(_.id) == Some(alg.id)))
   }
 
@@ -78,7 +84,7 @@ final class RegistrySpec extends AnyFunSuite {
   }
 
   test(
-    "the Echo overlay marks a spanning tree at the end of a run, and Chang-Roberts has no marks"
+    "the Echo overlay marks a spanning tree and the initiator, and Chang-Roberts fills the leader"
   ) {
     Registry.echo.presets.foreach { preset =>
       val result = Registry.echo.simulate(Registry.echo.spec(preset, Seed(3)))
@@ -87,8 +93,11 @@ final class RegistrySpec extends AnyFunSuite {
         val states = simulation.last.map(_.states).getOrElse(SortedMap.empty[NodeId, EchoState])
         val marks = Registry.echo.overlay.marks(states)
         val nodes = preset.topology.nodes
-        assert(marks.size == nodes.size - 1, preset.name)
-        val children = marks.collect { case Mark.TreeEdge(child, parent) =>
+        val tree = marks.collect { case m @ Mark.OnEdge(_, _, EdgeStyle.Tree) => m }
+        assert(tree.size == nodes.size - 1, preset.name)
+        val chosen = marks.collect { case Mark.Fill(node, NodeFill.Chosen) => node }
+        assert(chosen == preset.topology.initiators.toList, preset.name)
+        val children = tree.collect { case Mark.OnEdge(child, parent, _) =>
           assert(preset.topology.edges.contains(Edge(child, parent)), preset.name)
           child
         }
@@ -98,7 +107,26 @@ final class RegistrySpec extends AnyFunSuite {
     Registry.changRoberts.defaultSpec.map(Registry.changRoberts.simulate).foreach { result =>
       result.foreach { simulation =>
         val states = simulation.last.map(_.states).getOrElse(SortedMap.empty[NodeId, CrState])
-        assert(Registry.changRoberts.overlay.marks(states) == Nil)
+        val leaders = states.collect { case (node, CrState.Leader(_)) => node }.toList
+        assert(leaders.size == 1)
+        assert(
+          Registry.changRoberts.overlay.marks(states) == leaders.map(Mark.Fill(_, NodeFill.Chosen))
+        )
+      }
+    }
+  }
+
+  test("the invariant of each algorithm holds in each world of seeded runs on each preset") {
+    Registry.all.foreach { any =>
+      val alg = any.algorithm
+      alg.presets.foreach { preset =>
+        (1L to 5L).foreach { seed =>
+          alg.simulate(alg.spec(preset, Seed(seed))).foreach { simulation =>
+            simulation.worlds.foreach { w =>
+              assert(alg.invariant(w) == None, s"${alg.name} on ${preset.name}, seed $seed")
+            }
+          }
+        }
       }
     }
   }

@@ -7,10 +7,12 @@ import cs553.core.protocol.OrderPolicy
 import cs553.core.registry.Algorithm
 import cs553.core.rng.Seed
 import cs553.core.topology.Edge
+import cs553.core.trace.ChannelRecord
 import cs553.core.trace.Choice
 import cs553.core.trace.EnvelopeId
 import cs553.core.trace.Mark
 import cs553.core.trace.Outcome
+import cs553.core.trace.Overlay
 import cs553.core.trace.Policy
 import cs553.core.trace.RunSpec
 import cs553.core.trace.TraceEvent
@@ -281,23 +283,44 @@ final case class Session[S, M, A, O](
     (drawn.flatMap(_._1), drawn.flatMap(_._2))
   }
 
-  private def edgeViews(w: World[S, M], at: Map[NodeId, Point]): List[EdgeView] = {
-    val tree = alg.overlay
-      .marks(w.states)
-      .collect { case Mark.TreeEdge(child, parent) =>
-        Set(child, parent)
-      }
-      .toSet
+  /** For each node with a `Cut` mark: the step of the first world with the mark. */
+  private lazy val cuts: Map[NodeId, Int] = Overlay.cutSteps(alg.overlay, sim.worlds.map(_.states))
+
+  private def edgeViews(
+      w: World[S, M],
+      at: Map[NodeId, Point],
+      marks: List[Mark]
+  ): List[EdgeView] = {
+    val styles = marks.collect { case Mark.OnEdge(from, to, style) => Set(from, to) -> style }.toMap
     val edges = w.topology.edges
     edges.toList.flatMap { e =>
       val back = edges.contains(Edge(e.to, e.from))
       if back && e.from.value > e.to.value then { Nil }
       else {
         at.get(e.from).zip(at.get(e.to)).toList.map { case (a, b) =>
-          EdgeView(e.from, e.to, a, b, !back, tree.contains(Set(e.from, e.to)))
+          EdgeView(e.from, e.to, a, b, !back, styles.get(Set(e.from, e.to)))
         }
       }
     }
+  }
+
+  /** The `Channel` marks as text next to the middle of each channel. */
+  private def noteViews(at: Map[NodeId, Point], marks: List[Mark]): List[NoteView] = {
+    marks.collect { case Mark.Channel(from, to, record, recorded) =>
+      at.get(from).zip(at.get(to)).map { case (a, b) =>
+        val dx = b.x - a.x
+        val dy = b.y - a.y
+        val length = math.max(1.0, math.sqrt(dx * dx + dy * dy))
+        val spot = Point((a.x + b.x) / 2 - dy / length * 14, (a.y + b.y) / 2 + dx / length * 14)
+        val phase = record match {
+          case ChannelRecord.Recording => "recording"
+          case ChannelRecord.Closed    => "closed"
+        }
+        val contents = if recorded.isEmpty then { "empty" }
+        else { recorded.mkString(", ") }
+        NoteView(from, to, spot, s"$phase: $contents")
+      }
+    }.flatten
   }
 
   def frame(size: Size): Option[Frame] = sim.worlds.lift(cursor).map { w =>
@@ -305,7 +328,9 @@ final case class Session[S, M, A, O](
     val points = plan.positions
     val active = current
     val decided = decidedNodes
-    val first = shown.collectFirst { case TraceEvent.Decided(_, node, _) => node }
+    val marks = alg.overlay.marks(w.states)
+    val fills = marks.collect { case Mark.Fill(node, fill) => node -> fill }.toMap
+    val badges = marks.collect { case Mark.Badge(node, text) => node -> text }
     val next = if live then { nextChoice }
     else { None }
     val nodes = w.states.toList.map { case (node, state) =>
@@ -321,10 +346,12 @@ final case class Session[S, M, A, O](
         node,
         at,
         plan.side(at),
-        alg.inspectState.label(state).split(", ").toList,
+        alg.inspectState.label(state).split(", ").toList ++
+          badges.collect { case (`node`, text) => text },
         active.contains(node),
         decided.contains(node),
-        first.contains(node),
+        fills.get(node),
+        cuts.get(node).filter(_ <= cursor),
         actions
       )
     }
@@ -337,15 +364,17 @@ final case class Session[S, M, A, O](
     Frame(
       plan.box,
       nodes,
-      edgeViews(w, points),
+      edgeViews(w, points, marks),
       envelopes,
       more,
+      noteViews(points, marks),
       cursor,
       last,
       status(w),
       firstDecision.filter(_ <= cursor),
       finishedAs(Outcome.Quiescent),
-      finishedAs(Outcome.StepLimit)
+      finishedAs(Outcome.StepLimit),
+      alg.invariant(w)
     )
   }
 

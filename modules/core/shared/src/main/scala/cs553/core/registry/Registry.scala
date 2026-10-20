@@ -1,89 +1,39 @@
 package cs553.core.registry
 
-import cats.data.NonEmptyList
-import cs553.core.Family
-import cs553.core.algorithms.election.ChangRoberts
 import cs553.core.algorithms.election.CrAction
 import cs553.core.algorithms.election.CrMsg
 import cs553.core.algorithms.election.CrOutput
 import cs553.core.algorithms.election.CrState
-import cs553.core.algorithms.wave.Echo
 import cs553.core.algorithms.wave.EchoAction
 import cs553.core.algorithms.wave.EchoMsg
 import cs553.core.algorithms.wave.EchoOutput
 import cs553.core.algorithms.wave.EchoState
 import cs553.core.ids.AlgorithmId
-import cs553.core.ids.NodeId
-import cs553.core.ids.Uid
-import cs553.core.topology.NodeAttrs
-import cs553.core.topology.Preset
-import cs553.core.topology.Role
-import cs553.core.topology.Topology
-import cs553.core.topology.TopologyError
 
-/** The algorithms that the UI offers, with their topology presets. */
+/** The algorithms that the UI offers, in the order of `Catalogue.algorithms`.
+  *
+  * Each algorithm has its own file `<Name>Entry.scala` with `entry: Option[AnyAlgorithm]`. An
+  * algorithm that is not ready has `entry = None`. To add an algorithm, change only its entry file:
+  * this list already holds a line for each of the eight algorithms.
+  */
 object Registry {
 
-  val echo: Algorithm[EchoState, EchoMsg, EchoAction, EchoOutput] = Algorithm(
-    Echo.protocol,
-    "Echo",
-    Family.Wave,
-    "A wave from one initiator builds a spanning tree, and the echoes tell the initiator that " +
-      "each node took part.",
-    List(
-      echoPreset("inputEcho", "Five nodes, one leaf", "inputEcho.dot", Some(NodeId(1))),
-      echoPreset("inputTarry", "Six nodes in three layers", "inputTarry.dot", Some(NodeId(1))),
-      echoPreset("netgraph-6", "Six-node network", "NetGraph_30-03-24-18-54-55.ngs.dot", None)
-    ).flatten
-  )
-
-  val changRoberts: Algorithm[CrState, CrMsg, CrAction, CrOutput] = Algorithm(
-    ChangRoberts.protocol,
-    "Chang-Roberts",
-    Family.Election,
-    "Initiators on a directed ring send their uids around, and only the largest uid comes back.",
-    List(
-      ringPreset("ring-6", "Ring of 6", List(4, 1, 6, 2, 5, 3), Set(0, 2, 3)),
-      ringPreset("ring-8", "Ring of 8", List(3, 7, 1, 8, 5, 2, 6, 4), Set(0, 1, 4, 6))
-    ).flatten
-  )
-
-  val all: List[AnyAlgorithm] = List(AnyAlgorithm(echo), AnyAlgorithm(changRoberts))
+  // Add new algorithms here. Each algorithm already has its line, in catalogue order.
+  val all: List[AnyAlgorithm] = List(
+    ChandyLamportEntry.entry,
+    LaiYangEntry.entry,
+    EchoEntry.entry,
+    TarryEntry.entry,
+    TreeEntry.entry,
+    BrachaTouegEntry.entry,
+    ChangRobertsEntry.entry,
+    FranklinEntry.entry
+  ).flatten
 
   def find(id: AlgorithmId): Option[AnyAlgorithm] = all.find(_.id == id)
 
-  /** An Echo preset from a fixture file, prepared with `Echo.prepare`. `None` when the file is
-    * missing or not valid; `RegistrySpec` makes sure that each preset loads.
-    */
-  private def echoPreset(
-      name: String,
-      title: String,
-      file: String,
-      initiator: Option[NodeId]
-  ): Option[Preset] = {
-    val prepared = for {
-      text <- TopologyFiles.all
-        .collectFirst { case (`file`, t) => t }
-        .toRight(NonEmptyList.one(TopologyError.Requirement(s"no fixture $file")))
-      loaded <- Topology.fromDot(text)
-      ready <- Echo.prepare(loaded, initiator)
-    } yield Preset(name, title, ready.topology)
-    prepared.toOption
-  }
+  /** Short names for the tests of M1 to M3. New code uses `<Name>Entry.algorithm`. */
+  val echo: Algorithm[EchoState, EchoMsg, EchoAction, EchoOutput] = EchoEntry.algorithm
 
-  /** A directed ring `0 -> 1 -> ...` with these uids in ring order and these nodes as initiators.
-    */
-  private def ringPreset(
-      name: String,
-      title: String,
-      uids: List[Int],
-      initiators: Set[Int]
-  ): Option[Preset] = {
-    val attrs = uids.zipWithIndex.map { case (uid, i) =>
-      val role = if initiators.contains(i) then { Role.Initiator }
-      else { Role.NonInitiator }
-      NodeId(i) -> NodeAttrs(role, Some(Uid(uid)), Map.empty)
-    }.toMap
-    Topology.ring(uids.size, attrs).toOption.map(Preset(name, title, _))
-  }
+  val changRoberts: Algorithm[CrState, CrMsg, CrAction, CrOutput] = ChangRobertsEntry.algorithm
 }

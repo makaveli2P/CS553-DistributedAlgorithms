@@ -26,11 +26,41 @@ enum Role derives Codec.AsObject {
 /** The input attributes of one node. `extra` keeps the other DOT attributes, for example `N of M`
   * requests, as data for the protocol to parse.
   */
-final case class NodeAttrs(role: Role, uid: Option[Uid], extra: Map[String, String])
-    derives Codec.AsObject
+final case class NodeAttrs(
+    role: Role,
+    uid: Option[Uid],
+    extra: Map[String, String]
+) derives Codec.AsObject {
+
+  def withExtra(key: String, value: String): NodeAttrs = copy(extra = extra + (key -> value))
+
+  /** The integer value of `extra(key)`. `Right(None)` when the key is absent. */
+  def int(node: NodeId, key: String): Either[TopologyError, Option[Int]] = extra.get(key) match {
+    case None       => Right(None)
+    case Some(text) =>
+      Try(text.trim.toInt).toOption
+        .map(Some(_))
+        .toRight(TopologyError.BadAttribute(node, key, text))
+  }
+}
 
 object NodeAttrs {
   val default: NodeAttrs = NodeAttrs(Role.NonInitiator, None, Map.empty)
+
+  /** The names of the `extra` attributes that more than one algorithm reads. A DOT file gives them
+    * as node attributes, for example `3 [request=2, balance=10]`.
+    */
+  object Keys {
+
+    /** Bracha-Toueg: the node needs `request` (N) grants from its M out-neighbours. */
+    val request: String = "request"
+
+    /** Snapshots: the initial balance of the node. */
+    val balance: String = "balance"
+
+    /** Snapshots: the number of transfers that the node can still start. */
+    val budget: String = "budget"
+  }
 }
 
 /** An error in a topology input. A protocol also returns it from `init` when the topology does not
@@ -88,6 +118,28 @@ final case class Topology private (
   def attrsOf(node: NodeId): NodeAttrs = attrs.getOrElse(node, NodeAttrs.default)
 
   def initiators: SortedSet[NodeId] = nodes.filter(n => attrsOf(n).role == Role.Initiator)
+
+  def outDegree(node: NodeId): Int = outNeighbours(node).size
+
+  /** True when the graph is undirected and connected and has no cycle. */
+  def isTree: Boolean = isSymmetric && isConnected && edges.size == 2 * (nodes.size - 1)
+
+  /** True when each node can reach each other node along the edge directions. */
+  def isStronglyConnected: Boolean = nodes.headOption match {
+    case None        => true
+    case Some(start) =>
+      val reversed = Topology(nodes, edges.map(e => Edge(e.to, e.from)), attrs)
+      forward(Set(start), List(start)) == nodes.toSet &&
+      reversed.forward(Set(start), List(start)) == nodes.toSet
+  }
+
+  @tailrec
+  private def forward(seen: Set[NodeId], frontier: List[NodeId]): Set[NodeId] = frontier match {
+    case Nil          => seen
+    case node :: rest =>
+      val next = outNeighbours(node).filterNot(seen.contains).toList
+      forward(seen ++ next, next ++ rest)
+  }
 
   /** True when each edge has its reverse edge, so the graph is undirected. */
   def isSymmetric: Boolean = edges.forall(e => edges.contains(Edge(e.to, e.from)))
@@ -200,6 +252,24 @@ object Topology {
     else {
       val ids = (0 until size).map(NodeId(_))
       directed(ids, ids.map(i => (i, NodeId((i.value + 1) % size))), attrs)
+    }
+  }
+
+  /** A ring with both directions of each edge, for example for Franklin. */
+  def bidirectionalRing(
+      size: Int,
+      attrs: Map[NodeId, NodeAttrs] = Map.empty
+  ): Either[NonEmptyList[TopologyError], Topology] = ring(size, attrs).map(_.symmetric)
+
+  /** An undirected tree. Gives a `Requirement` error when the edges do not make a tree. */
+  def tree(
+      nodes: Iterable[NodeId],
+      edges: Iterable[(NodeId, NodeId)],
+      attrs: Map[NodeId, NodeAttrs] = Map.empty
+  ): Either[NonEmptyList[TopologyError], Topology] = {
+    undirected(nodes, edges, attrs).flatMap { t =>
+      if t.isTree then { Right(t) }
+      else { Left(NonEmptyList.one(TopologyError.Requirement("the graph is not a tree"))) }
     }
   }
 

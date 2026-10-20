@@ -129,8 +129,8 @@ final class NodeAdapterSpec extends AnyFunSuite with EitherValues with OptionVal
     }
   }
 
-  generic(Registry.echo)
-  generic(Registry.changRoberts)
+  // Each algorithm of the registry gets these tests with no change here.
+  Registry.all.foreach(any => generic(any.algorithm))
 
   test("a protocol error gives one Rejected report and no Put, and the actor stays alive") {
     val a = Registry.echo

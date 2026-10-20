@@ -2,7 +2,9 @@ package cs553.web
 
 import cs553.core.ids.NodeId
 import cs553.core.protocol.ChannelOrder
+import cs553.core.trace.EdgeStyle
 import cs553.core.trace.EnvelopeId
+import cs553.core.trace.NodeFill
 
 /** A point in the coordinates of the canvas. One unit is one CSS pixel. */
 final case class Point(x: Double, y: Double)
@@ -35,9 +37,10 @@ final case class LabelSpot(x: Double, firstY: Double, side: LabelSide, actionY: 
   */
 final case class ActionView(index: Int, label: String, next: Boolean)
 
-/** One node at the shown step. `lines` are the parts of the `Inspect` label, one for each line.
-  * `first` is true for the node that decided first up to the shown step: the initiator of a wave or
-  * the leader of an election. The home thumbnail uses the same rule.
+/** One node at the shown step. `lines` are the parts of the `Inspect` label, one for each line, and
+  * then the `Badge` marks of the overlay. `fill` is the last `Fill` mark of the overlay. `cutAt` is
+  * the step of the first world with a `Cut` mark for the node, when it is not later than the shown
+  * step.
   */
 final case class NodeView(
     id: NodeId,
@@ -46,19 +49,28 @@ final case class NodeView(
     lines: List[String],
     current: Boolean,
     decided: Boolean,
-    first: Boolean,
+    fill: Option[NodeFill],
+    cutAt: Option[Int],
     actions: List[ActionView]
 )
 
-/** One drawn edge. An undirected pair of channels is one edge with `directed = false`. */
+/** One drawn edge. An undirected pair of channels is one edge with `directed = false`. `style` is
+  * the last `OnEdge` mark of the overlay for the edge, in either direction.
+  */
 final case class EdgeView(
     from: NodeId,
     to: NodeId,
     a: Point,
     b: Point,
     directed: Boolean,
-    tree: Boolean
+    style: Option[EdgeStyle]
 )
+
+/** The text of one `Channel` mark, for example "recording: 5, 3". It sits next to the middle of the
+  * channel `from -> to`, on the right side of the direction, so that the two directions of an
+  * undirected edge do not overlap.
+  */
+final case class NoteView(from: NodeId, to: NodeId, at: Point, text: String)
 
 /** Why the learner cannot deliver an envelope now. */
 enum Blocked {
@@ -105,12 +117,14 @@ final case class Frame(
     edges: List[EdgeView],
     envelopes: List[EnvelopeView],
     more: List[MoreView],
+    notes: List[NoteView],
     step: Int,
     last: Int,
     status: String,
     decidedAt: Option[Int],
     quiescentAt: Option[Int],
-    limitAt: Option[Int]
+    limitAt: Option[Int],
+    invariant: Option[String]
 ) {
   def live: Boolean = step == last
 }

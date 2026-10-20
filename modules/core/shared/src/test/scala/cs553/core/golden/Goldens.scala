@@ -23,12 +23,17 @@ object Goldens {
     def mediatedPath: String = s"${algorithm.id.value}/$preset-akka-mediated-$seed.json"
   }
 
-  val cases: List[Case] = List(
-    Case(AnyAlgorithm(Registry.echo), "inputEcho", 1L),
-    Case(AnyAlgorithm(Registry.echo), "inputEcho", 7L),
-    Case(AnyAlgorithm(Registry.changRoberts), "ring-6", 1L),
-    Case(AnyAlgorithm(Registry.changRoberts), "ring-6", 7L)
-  )
+  /** The seeds of each case. */
+  val seeds: List[Long] = List(1L, 7L)
+
+  /** One case for each algorithm of the registry and each seed, on the first preset of the
+    * algorithm. A new algorithm in the registry gets its cases with no change here.
+    */
+  val cases: List[Case] = for {
+    algorithm <- Registry.all
+    preset <- algorithm.algorithm.presets.headOption.toList
+    seed <- seeds
+  } yield Case(algorithm, preset.name, seed)
 
   /** The trace of the case as pretty JSON with a final newline, or the reason that it failed. */
   def render(c: Case): Either[String, String] = {

@@ -62,6 +62,12 @@ object Sandbox {
             div(
               cls("lines"),
               p(cls("status"), text <-- frame.map(_.status)),
+              child.maybe <-- frame
+                .map(_.invariant)
+                .distinct
+                .map(_.map { line =>
+                  p(cls("invariant"), role("alert"), line)
+                }),
               child.maybe <-- frame.map(facts),
               child.maybe <-- frame.map(
                 _.limitAt.map(n => p(cls("fact"), s"Run stopped at the step limit, step $n"))

@@ -6,6 +6,7 @@ import cs553.core.ids.NodeId
 import cs553.core.registry.Registry
 import cs553.core.rng.Seed
 import cs553.core.trace.Choice
+import cs553.core.trace.NodeFill
 import cs553.core.trace.Policy
 import cs553.core.trace.TraceEvent
 import cs553.core.world.Simulator
@@ -311,7 +312,7 @@ final class UiSpec extends AnyFunSuite {
     assert(thumb.nonEmpty)
     thumb.foreach { t =>
       assert(t.edges.count(_.tree) == t.nodes.size - 1)
-      assert(t.nodes.count(_.first) == 1)
+      assert(t.nodes.count(_.chosen) == 1)
       assert(t.nodes.forall(n => math.abs(n.at.x) < t.box.width / 2))
     }
   }
@@ -320,13 +321,36 @@ final class UiSpec extends AnyFunSuite {
     val thumb = Thumbnail.of(Registry.changRoberts)
     assert(thumb.map(_.nodes.size) == Some(6))
     assert(thumb.map(_.edges.size) == Some(6))
-    assert(thumb.map(_.nodes.count(_.first)) == Some(1))
+    assert(thumb.map(_.nodes.count(_.chosen)) == Some(1))
     assert(thumb.exists(_.edges.forall(!_.tree)))
     // In the default ring the leader has the largest uid, 6, at node 2.
-    val leader = thumb.flatMap(t => t.nodes.find(_.first))
+    val leader = thumb.flatMap(t => t.nodes.find(_.chosen))
     val ring = Registry.changRoberts.defaultSpec.map(spec =>
       Layout.ring(spec.topology, Thumbnail.rx, Thumbnail.ry)
     )
     assert(leader.map(_.at) == ring.flatMap(_.get(NodeId(2))))
+  }
+
+  test(
+    "the invariant line is absent while the invariant holds, and shows the reason when it breaks"
+  ) {
+    val alg = Registry.echo
+    val ok = alg.defaultSpec.flatMap(spec => Session.start(alg, spec).toOption)
+    assert(ok.flatMap(_.frame(Layout.defaultSize)).map(_.invariant) == Some(None))
+    val broken = alg.copy(invariant = _ => Some("Total 30 is not 35."))
+    val s = broken.defaultSpec.flatMap(spec => Session.start(broken, spec).toOption)
+    assert(
+      s.flatMap(_.frame(Layout.defaultSize)).flatMap(_.invariant) == Some("Total 30 is not 35.")
+    )
+  }
+
+  test("the frame draws the Fill marks of the overlay: the Echo initiator is chosen at the end") {
+    val alg = Registry.echo
+    val s0 = alg.defaultSpec.flatMap(spec => Session.start(alg, spec).toOption)
+    val end = s0.map(s => (1 to 200).foldLeft(s)((acc, _) => acc.deliverNext))
+    val fills = end.flatMap(_.frame(Layout.defaultSize)).toList.flatMap(_.nodes).flatMap(_.fill)
+    assert(fills == List(NodeFill.Chosen))
+    val start = s0.flatMap(_.frame(Layout.defaultSize)).toList.flatMap(_.nodes)
+    assert(start.forall(_.fill.isEmpty))
   }
 }

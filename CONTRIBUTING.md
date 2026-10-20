@@ -60,7 +60,7 @@ When a change of behavior is intended, do these steps:
 2. Read the diff of `fixtures/traces` with `git diff`.
 3. Explain the diff in the commit message (coding rule 30).
 
-Do not edit a golden trace by hand. To add a golden case, add it to `Goldens.cases`, and then run `sbt goldenPromote`.
+Do not edit a golden trace by hand. `Goldens.cases` makes two cases (seeds 1 and 7) on the first preset of each algorithm in the registry. To get the cases of a new algorithm, add the algorithm to the registry, and then run `sbt goldenPromote`.
 
 The build embeds `fixtures/topologies` in the core main code and `fixtures/traces` in the core test code, because core does no IO.
 

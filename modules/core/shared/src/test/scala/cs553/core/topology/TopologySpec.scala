@@ -89,4 +89,40 @@ final class TopologySpec extends AnyFunSuite {
       Topology.fromDot(dot).map(_.initiators.toList) == Right(List(NodeId(0), NodeId(1), NodeId(4)))
     )
   }
+
+  test("a bidirectional ring has both directions of each edge and is strongly connected") {
+    val ring = Topology.bidirectionalRing(4)
+    assert(ring.map(_.edges.size) == Right(8))
+    assert(ring.map(_.isSymmetric) == Right(true))
+    assert(ring.map(_.isStronglyConnected) == Right(true))
+    assert(Topology.ring(4).map(_.isStronglyConnected) == Right(true))
+  }
+
+  test("a directed path is not strongly connected") {
+    val path = Topology.directed(
+      List(0, 1, 2).map(NodeId(_)),
+      List((0, 1), (1, 2)).map { case (a, b) =>
+        (NodeId(a), NodeId(b))
+      }
+    )
+    assert(path.map(_.isStronglyConnected) == Right(false))
+  }
+
+  test("tree accepts a tree and refuses a graph with a cycle") {
+    def ids(edges: List[(Int, Int)]) = edges.map { case (a, b) => (NodeId(a), NodeId(b)) }
+    val nodes = List(0, 1, 2, 3).map(NodeId(_))
+    assert(Topology.tree(nodes, ids(List((0, 1), (1, 2), (1, 3)))).map(_.isTree) == Right(true))
+    assert(Topology.tree(nodes, ids(List((0, 1), (1, 2), (2, 0), (2, 3)))).isLeft)
+  }
+
+  test("a DOT wait-for graph keeps the request, balance and budget attributes") {
+    val dot = "digraph { 0 [request=2, balance=10, budget=x]; 1; 2; 0 -> 1; 0 -> 2 }"
+    val t = Topology.fromDot(dot)
+    val attrs = t.map(_.attrsOf(NodeId(0)))
+    assert(attrs.flatMap(_.int(NodeId(0), NodeAttrs.Keys.request)) == Right(Some(2)))
+    assert(attrs.flatMap(_.int(NodeId(0), NodeAttrs.Keys.balance)) == Right(Some(10)))
+    assert(attrs.flatMap(_.int(NodeId(0), NodeAttrs.Keys.budget)).isLeft)
+    assert(t.map(_.outDegree(NodeId(0))) == Right(2))
+    assert(NodeAttrs.default.withExtra("request", "1").int(NodeId(5), "request") == Right(Some(1)))
+  }
 }

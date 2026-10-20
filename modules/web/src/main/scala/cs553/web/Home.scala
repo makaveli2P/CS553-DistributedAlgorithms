@@ -87,7 +87,7 @@ object Home {
     val nodes = t.nodes.map { n =>
       s.circle(
         s.cls("thumb-node"),
-        s.cls("thumb-node--first") := n.first,
+        s.cls("thumb-node--chosen") := n.chosen,
         s.cx := n.at.x.toString,
         s.cy := n.at.y.toString,
         s.r := r
