@@ -6,6 +6,7 @@ import cs553.core.ids.Uid
 import io.circe.Codec
 import io.circe.Encoder
 
+import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
 import scala.collection.immutable.SortedSet
 import scala.util.Try
@@ -88,6 +89,50 @@ final case class Topology private (
 
   /** The same topology with the reverse of each edge added. */
   def symmetric: Topology = copy(edges = edges ++ edges.map(e => Edge(e.to, e.from)))
+
+  /** The nodes that no edge touches. */
+  def isolated: SortedSet[NodeId] = {
+    nodes.filterNot(n => edges.exists(e => e.from == n || e.to == n))
+  }
+
+  /** True when each node can reach each other node, with the edge directions ignored. */
+  def isConnected: Boolean = nodes.headOption match {
+    case None        => true
+    case Some(start) => reach(Set(start), List(start)) == nodes.toSet
+  }
+
+  @tailrec
+  private def reach(seen: Set[NodeId], frontier: List[NodeId]): Set[NodeId] = frontier match {
+    case Nil          => seen
+    case node :: rest =>
+      val next = (outNeighbours(node) ++ inNeighbours(node)).filterNot(seen.contains).toList
+      reach(seen ++ next, next ++ rest)
+  }
+
+  /** The same topology without these nodes and without the edges that touch them. */
+  def without(remove: Set[NodeId]): Either[NonEmptyList[TopologyError], Topology] = {
+    Topology.directed(
+      nodes.filterNot(remove.contains).toList,
+      edges.toList.filterNot(e => remove.contains(e.from) || remove.contains(e.to)).map { e =>
+        (e.from, e.to)
+      },
+      attrs.filterNot { case (n, _) => remove.contains(n) }
+    )
+  }
+
+  /** The same topology with exactly these nodes as initiators. Each other node is a non-initiator.
+    */
+  def withInitiators(chosen: Set[NodeId]): Either[NonEmptyList[TopologyError], Topology] = {
+    NonEmptyList.fromList(chosen.toList.sorted.filterNot(nodes.contains)) match {
+      case Some(unknown) => Left(unknown.map(TopologyError.UnknownNode(_)))
+      case None          =>
+        withAttrs(nodes.toList.map { n =>
+          val role = if chosen.contains(n) then { Role.Initiator }
+          else { Role.NonInitiator }
+          n -> attrsOf(n).copy(role = role)
+        }.toMap)
+    }
+  }
 
   /** The same topology with new attributes for some nodes. */
   def withAttrs(

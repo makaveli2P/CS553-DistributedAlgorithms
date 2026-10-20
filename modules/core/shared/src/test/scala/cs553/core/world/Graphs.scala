@@ -1,12 +1,13 @@
 package cs553.core.world
 
 import cs553.core.ids.NodeId
+import cs553.core.ids.Uid
 import cs553.core.topology.NodeAttrs
 import cs553.core.topology.Role
 import cs553.core.topology.Topology
 import org.scalacheck.Gen
 
-/** Generators of test topologies. Node 0 is the initiator. */
+/** Generators of test topologies. In `connected`, node 0 is the initiator. */
 object Graphs {
 
   val initiatorAttrs: Map[NodeId, NodeAttrs] =
@@ -25,6 +26,31 @@ object Graphs {
     Topology
       .undirected((0 until size).map(NodeId(_)), edges, initiatorAttrs)
       .getOrElse(fallback)
+  }
+
+  /** A connected undirected graph with one initiator at a random node. */
+  val connectedAnyInitiator: Gen[Topology] = for {
+    topology <- connected
+    initiator <- Gen.oneOf(topology.nodes.toList)
+  } yield topology.withInitiators(Set(initiator)).getOrElse(topology)
+
+  /** A directed ring of 2 to 12 nodes. Each node has a distinct `Uid`, and a random non-empty
+    * subset of the nodes are initiators.
+    */
+  val ringWithUids: Gen[Topology] = for {
+    size <- Gen.choose(2, 12)
+    uids <- Gen.pick(size, 1 to 99)
+    keys <- Gen.listOfN(size, Gen.long)
+    first <- Gen.choose(0, size - 1)
+    flags <- Gen.listOfN(size, Gen.prob(0.5))
+  } yield {
+    val shuffled = uids.toList.zip(keys).sortBy(_._2).map(_._1)
+    val attrs = shuffled.zipWithIndex.map { case (uid, i) =>
+      val role = if i == first || flags.lift(i).contains(true) then { Role.Initiator }
+      else { Role.NonInitiator }
+      NodeId(i) -> NodeAttrs(role, Some(Uid(uid)), Map.empty)
+    }.toMap
+    fixed(Topology.ring(size, attrs))
   }
 
   private lazy val fallback: Topology = {

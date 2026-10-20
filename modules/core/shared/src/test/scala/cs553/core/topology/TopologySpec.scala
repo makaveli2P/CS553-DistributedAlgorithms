@@ -63,4 +63,21 @@ final class TopologySpec extends AnyFunSuite {
     val bad = io.circe.parser.parse("""{"nodes":[0],"edges":[{"from":0,"to":0}],"attrs":{}}""")
     assert(bad.flatMap(_.as[Topology]).isLeft)
   }
+
+  test("isolated, isConnected, without and withInitiators") {
+    val t =
+      Topology.undirected(ids(0, 1, 2, 3), List(NodeId(1) -> NodeId(2), NodeId(2) -> NodeId(3)))
+    assert(t.map(_.isolated.toList) == Right(ids(0)))
+    assert(t.map(_.isConnected) == Right(false))
+    val trimmed = t.flatMap(_.without(Set(NodeId(0))))
+    assert(trimmed.map(_.nodes.toList) == Right(ids(1, 2, 3)))
+    assert(trimmed.map(_.isConnected) == Right(true))
+    val started = trimmed.flatMap(_.withInitiators(Set(NodeId(2))))
+    assert(started.map(_.initiators.toList) == Right(ids(2)))
+    assert(
+      trimmed.flatMap(_.withInitiators(Set(NodeId(9)))).left.map(_.toList) ==
+        Left(List(TopologyError.UnknownNode(NodeId(9))))
+    )
+    assert(trimmed.flatMap(_.without(Set(NodeId(1), NodeId(2), NodeId(3)))).isLeft)
+  }
 }
