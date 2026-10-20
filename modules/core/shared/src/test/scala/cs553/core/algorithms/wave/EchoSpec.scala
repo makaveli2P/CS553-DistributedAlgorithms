@@ -18,16 +18,16 @@ import cs553.core.trace.RunSpec
 import cs553.core.trace.StopRule
 import cs553.core.trace.TraceEvent
 import cs553.core.world.Graphs
+import cs553.core.world.PropertyBudget
 import cs553.core.world.Simulator
 import org.scalacheck.Gen
 import org.scalatest.EitherValues
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedSet
 
-final class EchoSpec extends AnyFunSuite with ScalaCheckPropertyChecks with EitherValues {
+final class EchoSpec extends AnyFunSuite with PropertyBudget with EitherValues {
 
   private type EchoRun = Run[EchoState, EchoMsg, EchoAction, EchoOutput]
 
@@ -182,7 +182,7 @@ final class EchoSpec extends AnyFunSuite with ScalaCheckPropertyChecks with Eith
     assert(finalStates(run).get(NodeId(2)).flatMap(_.parent).contains(NodeId(1)))
   }
 
-  test("on a triangle each schedule fires the same rules and sends 6 messages") {
+  test("on a triangle 20 different schedules fire the same rules and send 6 messages") {
     val triangle = Graphs.fixed(
       Topology.undirected(
         ids(0, 1, 2),
@@ -190,7 +190,7 @@ final class EchoSpec extends AnyFunSuite with ScalaCheckPropertyChecks with Eith
         Graphs.initiatorAttrs
       )
     )
-    (0L until 20L).foreach { seed =>
+    val schedules = (0L until 20L).map { seed =>
       val run = runEcho(triangle, seed)
       assert(sentCount(run) == 6)
       assert(
@@ -203,7 +203,10 @@ final class EchoSpec extends AnyFunSuite with ScalaCheckPropertyChecks with Eith
         )
       )
       assert(run.decisions.toList == List(NodeId(0) -> EchoOutput.WaveComplete))
+      run.trace.toList.collect { case TraceEvent.Stepped(_, _, cause, _, _, _) => cause }
     }
+    // The rule counts are the same, but the seeds give different schedules.
+    assert(schedules.toSet.size > 1)
   }
 
   test("an initiator with no neighbours decides at Wake") {

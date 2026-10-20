@@ -11,6 +11,7 @@ import cs553.core.trace.RunSpec
 import cs553.core.trace.StopRule
 import cs553.core.trace.TraceEvent
 import cs553.core.world.Graphs
+import cs553.core.world.PropertyBudget
 import cs553.core.world.Simulator
 import cs553.core.world.Toys.ChatAction
 import cs553.core.world.Toys.ChatMsg
@@ -24,9 +25,8 @@ import cs553.core.world.Toys.flood
 import org.scalacheck.Gen
 import org.scalatest.EitherValues
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
-final class RunJsonSpec extends AnyFunSuite with ScalaCheckPropertyChecks with EitherValues {
+final class RunJsonSpec extends AnyFunSuite with PropertyBudget with EitherValues {
 
   test("a seeded flood run round-trips through JSON") {
     forAll(Graphs.connected, Gen.long) { (topology: Topology, seed: Long) =>

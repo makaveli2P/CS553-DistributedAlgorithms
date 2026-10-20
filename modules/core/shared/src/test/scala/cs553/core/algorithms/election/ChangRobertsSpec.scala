@@ -1,9 +1,12 @@
 package cs553.core.algorithms.election
 
 import cs553.core.ids.NodeId
+import cs553.core.ids.RuleId
 import cs553.core.ids.Uid
 import cs553.core.protocol.ChannelOrder
 import cs553.core.protocol.NodeCtx
+import cs553.core.protocol.ProtocolError
+import cs553.core.protocol.Step
 import cs553.core.rng.Seed
 import cs553.core.topology.NodeAttrs
 import cs553.core.topology.Role
@@ -19,15 +22,15 @@ import cs553.core.trace.StopRule
 import cs553.core.trace.TraceEvent
 import cs553.core.world.ChoiceError
 import cs553.core.world.Graphs
+import cs553.core.world.PropertyBudget
 import cs553.core.world.RunError
 import cs553.core.world.Simulator
 import cs553.core.world.World
 import org.scalacheck.Gen
 import org.scalatest.EitherValues
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
-final class ChangRobertsSpec extends AnyFunSuite with ScalaCheckPropertyChecks with EitherValues {
+final class ChangRobertsSpec extends AnyFunSuite with PropertyBudget with EitherValues {
 
   private type CrRun = Run[CrState, CrMsg, CrAction, CrOutput]
 
@@ -280,6 +283,54 @@ final class ChangRobertsSpec extends AnyFunSuite with ScalaCheckPropertyChecks w
           Right((1 to size).toList)
       )
     }
+  }
+
+  test("randomRing depends on its seed: 20 seeds give different uid orders and initiator sets") {
+    val rings = (1L to 20L).map(seed => ChangRoberts.randomRing(8, Seed(seed)).value)
+    val uidOrders = rings.map(t => t.nodes.toList.map(t.attrsOf(_).uid)).toSet
+    val initiatorSets = rings.map(_.initiators).toSet
+    assert(uidOrders.size > 1)
+    assert(initiatorSets.size > 1)
+  }
+
+  test("randomRing(6, seed 7) gives one fixed ring") {
+    // A golden value: a change to the shuffle or to SplitMix64 changes the CLI demo ring.
+    val t = ChangRoberts.randomRing(6, Seed(7L)).value
+    assert(t.nodes.toList.flatMap(t.attrsOf(_).uid).map(_.value) == List(1, 5, 4, 6, 3, 2))
+    assert(t.initiators.toList.map(_.value) == List(1, 2, 5))
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // Direct examples of the leader branches, which a correct run does not reach.
+
+  private val ctx = NodeCtx.of(collegeRing(Set(0)), NodeId(0))
+  private val from = NodeId(3)
+
+  private def ruleOf(result: Either[ProtocolError, Step[CrState, CrMsg, CrOutput]]): RuleId = {
+    result.value.rule
+  }
+
+  test("the leader purges a smaller late Elect and rejects a larger one, in both leader states") {
+    List(CrState.Announcing(Uid(5)), CrState.Leader(Uid(5))).foreach { leader =>
+      assert(
+        ruleOf(p.onMessage(ctx, leader, from, CrMsg.Elect(Uid(3)))) == ChangRoberts.Rules.purge
+      )
+      assert(p.onMessage(ctx, leader, from, CrMsg.Elect(Uid(3))).value.state == leader)
+      assert(p.onMessage(ctx, leader, from, CrMsg.Elect(Uid(9))).left.value match {
+        case ProtocolError.UnexpectedMessage(sender, _) => sender == from
+        case _                                          => false
+      })
+    }
+  }
+
+  test("an announcing leader accepts only its own Leader message") {
+    val announcing = CrState.Announcing(Uid(5))
+    val back = p.onMessage(ctx, announcing, from, CrMsg.Leader(Uid(5))).value
+    assert(back.state == CrState.Leader(Uid(5)))
+    assert(back.rule == ChangRoberts.Rules.announceReturned)
+    assert(back.sends.isEmpty)
+    assert(p.onMessage(ctx, announcing, from, CrMsg.Leader(Uid(9))).isLeft)
+    assert(p.onMessage(ctx, CrState.Leader(Uid(5)), from, CrMsg.Leader(Uid(5))).isLeft)
   }
 
   test("Inspect gives labels and fields for the state, the message, the action and the output") {

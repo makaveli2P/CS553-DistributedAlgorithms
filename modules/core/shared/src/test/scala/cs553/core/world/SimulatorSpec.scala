@@ -24,9 +24,8 @@ import cs553.core.world.Toys.lockedChatter
 import org.scalacheck.Gen
 import org.scalatest.EitherValues
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
-final class SimulatorSpec extends AnyFunSuite with ScalaCheckPropertyChecks with EitherValues {
+final class SimulatorSpec extends AnyFunSuite with PropertyBudget with EitherValues {
 
   private type FloodRun = Run[FloodState, FloodMsg, FloodAction, FloodOutput]
 
@@ -57,6 +56,20 @@ final class SimulatorSpec extends AnyFunSuite with ScalaCheckPropertyChecks with
         assert(
           runFlood(floodSpec(topology, seed, order)) == runFlood(floodSpec(topology, seed, order))
         )
+    }
+  }
+
+  test("different seeds give different schedules on the same graph") {
+    val nodes = (0 until 5).map(NodeId(_))
+    val pairs = for {
+      a <- nodes
+      b <- nodes
+      if a.value < b.value
+    } yield (a, b)
+    val complete = Graphs.fixed(Topology.undirected(nodes, pairs, Graphs.initiatorAttrs))
+    ChannelOrder.values.foreach { order =>
+      val schedules = (1L to 20L).map(seed => choices(runFlood(floodSpec(complete, seed, order))))
+      assert(schedules.toSet.size > 1, s"order $order")
     }
   }
 
