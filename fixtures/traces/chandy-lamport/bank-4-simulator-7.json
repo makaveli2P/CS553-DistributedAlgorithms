@@ -1,0 +1,1734 @@
+{
+  "trace" : [
+    {
+      "Started" : {
+        "spec" : {
+          "algorithm" : "chandy-lamport",
+          "topology" : {
+            "nodes" : [
+              0,
+              1,
+              2,
+              3
+            ],
+            "edges" : [
+              {
+                "from" : 0,
+                "to" : 1
+              },
+              {
+                "from" : 0,
+                "to" : 3
+              },
+              {
+                "from" : 1,
+                "to" : 2
+              },
+              {
+                "from" : 2,
+                "to" : 0
+              },
+              {
+                "from" : 2,
+                "to" : 3
+              },
+              {
+                "from" : 3,
+                "to" : 0
+              }
+            ],
+            "attrs" : {
+              "0" : {
+                "role" : {
+                  "Initiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  "balance" : "10",
+                  "budget" : "3"
+                }
+              },
+              "1" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  "balance" : "20",
+                  "budget" : "3"
+                }
+              },
+              "2" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  "balance" : "5",
+                  "budget" : "0"
+                }
+              },
+              "3" : {
+                "role" : {
+                  "NonInitiator" : {
+                    
+                  }
+                },
+                "uid" : null,
+                "extra" : {
+                  "balance" : "15",
+                  "budget" : "3"
+                }
+              }
+            }
+          },
+          "order" : {
+            "Fifo" : {
+              
+            }
+          },
+          "policy" : {
+            "Seeded" : {
+              "seed" : "7"
+            }
+          },
+          "stop" : {
+            "AtQuiescence" : {
+              
+            }
+          },
+          "stepLimit" : 1000
+        },
+        "engine" : {
+          "Simulator" : {
+            
+          }
+        },
+        "initial" : {
+          "0" : {
+            "role" : {
+              "Initiator" : {
+                
+              }
+            },
+            "balance" : 10,
+            "budget" : 3,
+            "phase" : {
+              "Waiting" : {
+                
+              }
+            }
+          },
+          "1" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "balance" : 20,
+            "budget" : 3,
+            "phase" : {
+              "Waiting" : {
+                
+              }
+            }
+          },
+          "2" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "balance" : 5,
+            "budget" : 0,
+            "phase" : {
+              "Waiting" : {
+                
+              }
+            }
+          },
+          "3" : {
+            "role" : {
+              "NonInitiator" : {
+                
+              }
+            },
+            "balance" : 15,
+            "budget" : 3,
+            "phase" : {
+              "Waiting" : {
+                
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 1,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "node" : 0,
+        "cause" : {
+          "Fire" : {
+            "node" : 0,
+            "action" : {
+              "Spend" : {
+                "to" : 3,
+                "amount" : 3
+              }
+            }
+          }
+        },
+        "rule" : "spend",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "balance" : 7,
+          "budget" : 2,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 0,
+            "to" : 3,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 1,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "env" : {
+          "id" : {
+            "from" : 0,
+            "to" : 3,
+            "seq" : 0
+          },
+          "msg" : {
+            "Transfer" : {
+              "amount" : 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 2,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "node" : 3,
+        "cause" : {
+          "Fire" : {
+            "node" : 3,
+            "action" : {
+              "Spend" : {
+                "to" : 0,
+                "amount" : 2
+              }
+            }
+          }
+        },
+        "rule" : "spend",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 13,
+          "budget" : 2,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 3,
+            "to" : 0,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 2,
+          "local" : 1,
+          "lamport" : 1
+        },
+        "env" : {
+          "id" : {
+            "from" : 3,
+            "to" : 0,
+            "seq" : 0
+          },
+          "msg" : {
+            "Transfer" : {
+              "amount" : 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 3,
+          "local" : 2,
+          "lamport" : 2
+        },
+        "node" : 0,
+        "cause" : {
+          "Fire" : {
+            "node" : 0,
+            "action" : {
+              "Spend" : {
+                "to" : 1,
+                "amount" : 2
+              }
+            }
+          }
+        },
+        "rule" : "spend",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "balance" : 5,
+          "budget" : 1,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 0,
+            "to" : 1,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 3,
+          "local" : 2,
+          "lamport" : 2
+        },
+        "env" : {
+          "id" : {
+            "from" : 0,
+            "to" : 1,
+            "seq" : 0
+          },
+          "msg" : {
+            "Transfer" : {
+              "amount" : 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 4,
+          "local" : 3,
+          "lamport" : 3
+        },
+        "node" : 0,
+        "cause" : {
+          "Fire" : {
+            "node" : 0,
+            "action" : {
+              "Spend" : {
+                "to" : 1,
+                "amount" : 3
+              }
+            }
+          }
+        },
+        "rule" : "spend",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "balance" : 2,
+          "budget" : 0,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 0,
+            "to" : 1,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 4,
+          "local" : 3,
+          "lamport" : 3
+        },
+        "env" : {
+          "id" : {
+            "from" : 0,
+            "to" : 1,
+            "seq" : 1
+          },
+          "msg" : {
+            "Transfer" : {
+              "amount" : 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 5,
+          "local" : 2,
+          "lamport" : 2
+        },
+        "node" : 3,
+        "cause" : {
+          "Fire" : {
+            "node" : 3,
+            "action" : {
+              "Spend" : {
+                "to" : 0,
+                "amount" : 1
+              }
+            }
+          }
+        },
+        "rule" : "spend",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 12,
+          "budget" : 1,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 3,
+            "to" : 0,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 5,
+          "local" : 2,
+          "lamport" : 2
+        },
+        "env" : {
+          "id" : {
+            "from" : 3,
+            "to" : 0,
+            "seq" : 1
+          },
+          "msg" : {
+            "Transfer" : {
+              "amount" : 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 6,
+          "local" : 4,
+          "lamport" : 4
+        },
+        "node" : 0,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 3,
+              "to" : 0,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "receive",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "balance" : 4,
+          "budget" : 0,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 7,
+          "local" : 3,
+          "lamport" : 3
+        },
+        "node" : 3,
+        "cause" : {
+          "Fire" : {
+            "node" : 3,
+            "action" : {
+              "Spend" : {
+                "to" : 0,
+                "amount" : 3
+              }
+            }
+          }
+        },
+        "rule" : "spend",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 9,
+          "budget" : 0,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 3,
+            "to" : 0,
+            "seq" : 2
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 7,
+          "local" : 3,
+          "lamport" : 3
+        },
+        "env" : {
+          "id" : {
+            "from" : 3,
+            "to" : 0,
+            "seq" : 2
+          },
+          "msg" : {
+            "Transfer" : {
+              "amount" : 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 8,
+          "local" : 1,
+          "lamport" : 3
+        },
+        "node" : 1,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 0,
+              "to" : 1,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "receive",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 22,
+          "budget" : 3,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 9,
+          "local" : 2,
+          "lamport" : 4
+        },
+        "node" : 1,
+        "cause" : {
+          "Fire" : {
+            "node" : 1,
+            "action" : {
+              "Spend" : {
+                "to" : 2,
+                "amount" : 3
+              }
+            }
+          }
+        },
+        "rule" : "spend",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 19,
+          "budget" : 2,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 1,
+            "to" : 2,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 9,
+          "local" : 2,
+          "lamport" : 4
+        },
+        "env" : {
+          "id" : {
+            "from" : 1,
+            "to" : 2,
+            "seq" : 0
+          },
+          "msg" : {
+            "Transfer" : {
+              "amount" : 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 10,
+          "local" : 5,
+          "lamport" : 5
+        },
+        "node" : 0,
+        "cause" : {
+          "Fire" : {
+            "node" : 0,
+            "action" : {
+              "Initiate" : {
+                
+              }
+            }
+          }
+        },
+        "rule" : "initiate",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "balance" : 4,
+          "budget" : 0,
+          "phase" : {
+            "Recording" : {
+              "saved" : 4,
+              "channels" : [
+                {
+                  "Open" : {
+                    "from" : 2,
+                    "amounts" : [
+                    ]
+                  }
+                },
+                {
+                  "Open" : {
+                    "from" : 3,
+                    "amounts" : [
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 0,
+            "to" : 1,
+            "seq" : 2
+          },
+          {
+            "from" : 0,
+            "to" : 3,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 10,
+          "local" : 5,
+          "lamport" : 5
+        },
+        "env" : {
+          "id" : {
+            "from" : 0,
+            "to" : 1,
+            "seq" : 2
+          },
+          "msg" : {
+            "Marker" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 10,
+          "local" : 5,
+          "lamport" : 5
+        },
+        "env" : {
+          "id" : {
+            "from" : 0,
+            "to" : 3,
+            "seq" : 1
+          },
+          "msg" : {
+            "Marker" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 11,
+          "local" : 3,
+          "lamport" : 5
+        },
+        "node" : 1,
+        "cause" : {
+          "Fire" : {
+            "node" : 1,
+            "action" : {
+              "Spend" : {
+                "to" : 2,
+                "amount" : 3
+              }
+            }
+          }
+        },
+        "rule" : "spend",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 16,
+          "budget" : 1,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 1,
+            "to" : 2,
+            "seq" : 1
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 11,
+          "local" : 3,
+          "lamport" : 5
+        },
+        "env" : {
+          "id" : {
+            "from" : 1,
+            "to" : 2,
+            "seq" : 1
+          },
+          "msg" : {
+            "Transfer" : {
+              "amount" : 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 12,
+          "local" : 4,
+          "lamport" : 6
+        },
+        "node" : 1,
+        "cause" : {
+          "Fire" : {
+            "node" : 1,
+            "action" : {
+              "Spend" : {
+                "to" : 2,
+                "amount" : 1
+              }
+            }
+          }
+        },
+        "rule" : "spend",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 15,
+          "budget" : 0,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 1,
+            "to" : 2,
+            "seq" : 2
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 12,
+          "local" : 4,
+          "lamport" : 6
+        },
+        "env" : {
+          "id" : {
+            "from" : 1,
+            "to" : 2,
+            "seq" : 2
+          },
+          "msg" : {
+            "Transfer" : {
+              "amount" : 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 13,
+          "local" : 6,
+          "lamport" : 6
+        },
+        "node" : 0,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 3,
+              "to" : 0,
+              "seq" : 1
+            }
+          }
+        },
+        "rule" : "receive-record",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "balance" : 5,
+          "budget" : 0,
+          "phase" : {
+            "Recording" : {
+              "saved" : 4,
+              "channels" : [
+                {
+                  "Open" : {
+                    "from" : 2,
+                    "amounts" : [
+                    ]
+                  }
+                },
+                {
+                  "Open" : {
+                    "from" : 3,
+                    "amounts" : [
+                      1
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 14,
+          "local" : 5,
+          "lamport" : 7
+        },
+        "node" : 1,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 0,
+              "to" : 1,
+              "seq" : 1
+            }
+          }
+        },
+        "rule" : "receive",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 18,
+          "budget" : 0,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 15,
+          "local" : 7,
+          "lamport" : 7
+        },
+        "node" : 0,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 3,
+              "to" : 0,
+              "seq" : 2
+            }
+          }
+        },
+        "rule" : "receive-record",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "balance" : 8,
+          "budget" : 0,
+          "phase" : {
+            "Recording" : {
+              "saved" : 4,
+              "channels" : [
+                {
+                  "Open" : {
+                    "from" : 2,
+                    "amounts" : [
+                    ]
+                  }
+                },
+                {
+                  "Open" : {
+                    "from" : 3,
+                    "amounts" : [
+                      1,
+                      3
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 16,
+          "local" : 6,
+          "lamport" : 8
+        },
+        "node" : 1,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 0,
+              "to" : 1,
+              "seq" : 2
+            }
+          }
+        },
+        "rule" : "first-marker",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 18,
+          "budget" : 0,
+          "phase" : {
+            "Recorded" : {
+              "saved" : 18,
+              "channels" : [
+                {
+                  "Closed" : {
+                    "from" : 0,
+                    "amounts" : [
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 1,
+            "to" : 2,
+            "seq" : 3
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 16,
+          "local" : 6,
+          "lamport" : 8
+        },
+        "env" : {
+          "id" : {
+            "from" : 1,
+            "to" : 2,
+            "seq" : 3
+          },
+          "msg" : {
+            "Marker" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Decided" : {
+        "at" : {
+          "step" : 16,
+          "local" : 6,
+          "lamport" : 8
+        },
+        "node" : 1,
+        "output" : {
+          "Snapshot" : {
+            "balance" : 18,
+            "channels" : [
+              {
+                "from" : 0,
+                "amounts" : [
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 17,
+          "local" : 1,
+          "lamport" : 5
+        },
+        "node" : 2,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 1,
+              "to" : 2,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "receive",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 8,
+          "budget" : 0,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 18,
+          "local" : 2,
+          "lamport" : 6
+        },
+        "node" : 2,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 1,
+              "to" : 2,
+              "seq" : 1
+            }
+          }
+        },
+        "rule" : "receive",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 11,
+          "budget" : 0,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 19,
+          "local" : 4,
+          "lamport" : 4
+        },
+        "node" : 3,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 0,
+              "to" : 3,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "receive",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 12,
+          "budget" : 0,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 20,
+          "local" : 5,
+          "lamport" : 6
+        },
+        "node" : 3,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 0,
+              "to" : 3,
+              "seq" : 1
+            }
+          }
+        },
+        "rule" : "first-marker",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 12,
+          "budget" : 0,
+          "phase" : {
+            "Recording" : {
+              "saved" : 12,
+              "channels" : [
+                {
+                  "Closed" : {
+                    "from" : 0,
+                    "amounts" : [
+                    ]
+                  }
+                },
+                {
+                  "Open" : {
+                    "from" : 2,
+                    "amounts" : [
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 3,
+            "to" : 0,
+            "seq" : 3
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 20,
+          "local" : 5,
+          "lamport" : 6
+        },
+        "env" : {
+          "id" : {
+            "from" : 3,
+            "to" : 0,
+            "seq" : 3
+          },
+          "msg" : {
+            "Marker" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 21,
+          "local" : 8,
+          "lamport" : 8
+        },
+        "node" : 0,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 3,
+              "to" : 0,
+              "seq" : 3
+            }
+          }
+        },
+        "rule" : "close-channel",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "balance" : 8,
+          "budget" : 0,
+          "phase" : {
+            "Recording" : {
+              "saved" : 4,
+              "channels" : [
+                {
+                  "Open" : {
+                    "from" : 2,
+                    "amounts" : [
+                    ]
+                  }
+                },
+                {
+                  "Closed" : {
+                    "from" : 3,
+                    "amounts" : [
+                      1,
+                      3
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 22,
+          "local" : 3,
+          "lamport" : 7
+        },
+        "node" : 2,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 1,
+              "to" : 2,
+              "seq" : 2
+            }
+          }
+        },
+        "rule" : "receive",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 12,
+          "budget" : 0,
+          "phase" : {
+            "Waiting" : {
+              
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 23,
+          "local" : 4,
+          "lamport" : 9
+        },
+        "node" : 2,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 1,
+              "to" : 2,
+              "seq" : 3
+            }
+          }
+        },
+        "rule" : "first-marker",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 12,
+          "budget" : 0,
+          "phase" : {
+            "Recorded" : {
+              "saved" : 12,
+              "channels" : [
+                {
+                  "Closed" : {
+                    "from" : 1,
+                    "amounts" : [
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "sent" : [
+          {
+            "from" : 2,
+            "to" : 0,
+            "seq" : 0
+          },
+          {
+            "from" : 2,
+            "to" : 3,
+            "seq" : 0
+          }
+        ]
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 23,
+          "local" : 4,
+          "lamport" : 9
+        },
+        "env" : {
+          "id" : {
+            "from" : 2,
+            "to" : 0,
+            "seq" : 0
+          },
+          "msg" : {
+            "Marker" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Sent" : {
+        "at" : {
+          "step" : 23,
+          "local" : 4,
+          "lamport" : 9
+        },
+        "env" : {
+          "id" : {
+            "from" : 2,
+            "to" : 3,
+            "seq" : 0
+          },
+          "msg" : {
+            "Marker" : {
+              
+            }
+          }
+        }
+      }
+    },
+    {
+      "Decided" : {
+        "at" : {
+          "step" : 23,
+          "local" : 4,
+          "lamport" : 9
+        },
+        "node" : 2,
+        "output" : {
+          "Snapshot" : {
+            "balance" : 12,
+            "channels" : [
+              {
+                "from" : 1,
+                "amounts" : [
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 24,
+          "local" : 6,
+          "lamport" : 10
+        },
+        "node" : 3,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 2,
+              "to" : 3,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "close-channel",
+        "after" : {
+          "role" : {
+            "NonInitiator" : {
+              
+            }
+          },
+          "balance" : 12,
+          "budget" : 0,
+          "phase" : {
+            "Recorded" : {
+              "saved" : 12,
+              "channels" : [
+                {
+                  "Closed" : {
+                    "from" : 0,
+                    "amounts" : [
+                    ]
+                  }
+                },
+                {
+                  "Closed" : {
+                    "from" : 2,
+                    "amounts" : [
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Decided" : {
+        "at" : {
+          "step" : 24,
+          "local" : 6,
+          "lamport" : 10
+        },
+        "node" : 3,
+        "output" : {
+          "Snapshot" : {
+            "balance" : 12,
+            "channels" : [
+              {
+                "from" : 0,
+                "amounts" : [
+                ]
+              },
+              {
+                "from" : 2,
+                "amounts" : [
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "Stepped" : {
+        "at" : {
+          "step" : 25,
+          "local" : 9,
+          "lamport" : 10
+        },
+        "node" : 0,
+        "cause" : {
+          "Deliver" : {
+            "id" : {
+              "from" : 2,
+              "to" : 0,
+              "seq" : 0
+            }
+          }
+        },
+        "rule" : "close-channel",
+        "after" : {
+          "role" : {
+            "Initiator" : {
+              
+            }
+          },
+          "balance" : 8,
+          "budget" : 0,
+          "phase" : {
+            "Recorded" : {
+              "saved" : 4,
+              "channels" : [
+                {
+                  "Closed" : {
+                    "from" : 2,
+                    "amounts" : [
+                    ]
+                  }
+                },
+                {
+                  "Closed" : {
+                    "from" : 3,
+                    "amounts" : [
+                      1,
+                      3
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "sent" : [
+        ]
+      }
+    },
+    {
+      "Decided" : {
+        "at" : {
+          "step" : 25,
+          "local" : 9,
+          "lamport" : 10
+        },
+        "node" : 0,
+        "output" : {
+          "Snapshot" : {
+            "balance" : 4,
+            "channels" : [
+              {
+                "from" : 2,
+                "amounts" : [
+                ]
+              },
+              {
+                "from" : 3,
+                "amounts" : [
+                  1,
+                  3
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "Finished" : {
+        "at" : {
+          "step" : 25,
+          "local" : 0,
+          "lamport" : 0
+        },
+        "outcome" : {
+          "Quiescent" : {
+            
+          }
+        }
+      }
+    }
+  ]
+}

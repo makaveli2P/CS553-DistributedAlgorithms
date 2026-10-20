@@ -72,8 +72,9 @@ final class RecordSpec
   }
 
   test("Record.plan names the valid algorithms and presets") {
-    val unknownAlg = Record.plan(record("record --engine mediated --alg tarry --preset x"))
-    assert(unknownAlg.left.value == "unknown algorithm 'tarry' (use echo, chang-roberts)")
+    val unknownAlg = Record.plan(record("record --engine mediated --alg paxos --preset x"))
+    val ids = Registry.all.map(_.id.value).mkString(", ")
+    assert(unknownAlg.left.value == s"unknown algorithm 'paxos' (use $ids)")
     val unknownPreset = Record.plan(record("record --engine mediated --alg echo --preset ring-6"))
     assert(
       unknownPreset.left.value == "Echo has no preset 'ring-6' (use inputEcho, inputTarry, netgraph-6)"
