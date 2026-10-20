@@ -161,7 +161,21 @@ object Simulator {
       w: World[S, M],
       run: Run[S, M, A, O]
   ): Option[Outcome] = {
-    val decidedLast = run.trace.lastOption match {
+    stopWhen(spec, w.step, World.enabled(p, w), run.trace.lastOption)
+  }
+
+  /** The rule of `stopAt` on plain data, so that an engine with no `World` stops at the same step.
+    *
+    * `step` is the number of steps so far, `enabled` the legal choices now and `last` the last
+    * trace event so far.
+    */
+  def stopWhen[A](
+      spec: RunSpec[A],
+      step: Int,
+      enabled: List[Choice[A]],
+      last: Option[TraceEvent[Any, Any, Any, Any]]
+  ): Option[Outcome] = {
+    val decidedLast = last match {
       case Some(TraceEvent.Decided(_, _, _)) => true
       case Some(_) | None                    => false
     }
@@ -170,9 +184,14 @@ object Simulator {
       case StopRule.AtQuiescence    => false
     }
     if stopAtDecision then { Some(Outcome.AlgorithmDecided) }
-    else if World.enabled(p, w).isEmpty then { Some(Outcome.Quiescent) }
-    else if w.step >= spec.stepLimit then { Some(Outcome.StepLimit) }
+    else if enabled.isEmpty then { Some(Outcome.Quiescent) }
+    else if step >= spec.stepLimit then { Some(Outcome.StepLimit) }
     else { None }
+  }
+
+  /** The `Finished` event of a run that stops after `step` steps. */
+  def finishedAt(step: Int, outcome: Outcome): TraceEvent[Nothing, Nothing, Nothing, Nothing] = {
+    TraceEvent.Finished(Stamp(step, 0, 0), outcome)
   }
 
   private def finish[S, M, A, O](
@@ -180,9 +199,7 @@ object Simulator {
       w: World[S, M],
       outcome: Outcome
   ): Simulation[S, M, A, O] = {
-    simulation.copy(run =
-      Run(simulation.run.trace :+ TraceEvent.Finished(Stamp(w.step, 0, 0), outcome))
-    )
+    simulation.copy(run = Run(simulation.run.trace :+ finishedAt(w.step, outcome)))
   }
 
   /** The state of the policy: a generator for `Seeded`, the remaining choices for `Script`. */

@@ -119,13 +119,30 @@ object World {
     * list. A `Script` can still give it.
     */
   def enabled[S, M, A, O](p: Protocol[S, M, A, O], w: World[S, M]): List[Choice[A]] = {
-    val deliverable = w.order match {
-      case ChannelOrder.Fifo     => w.channels.values.toList.flatMap(_.headOption)
-      case ChannelOrder.AnyOrder => w.channels.values.toList.flatten
+    val actions = w.states.toList.map { case (node, state) =>
+      node -> w.ctxs.get(node).toList.flatMap(ctx => p.actions(ctx, state))
     }
-    val deliveries = deliverable.map(_.env.id).sorted.map(id => Choice.Deliver(id))
-    val fires = w.states.toList.flatMap { case (node, state) =>
-      w.ctxs.get(node).toList.flatMap(ctx => p.actions(ctx, state).map(a => Choice.Fire(node, a)))
+    enabledOf(w.order, w.channels.values.toList.map(_.map(_.env.id)), actions)
+  }
+
+  /** The rule of `enabled` on plain data, so that an engine with no `World` gives the same list.
+    *
+    * `queues` holds the envelope ids of each channel, oldest first. `actions` holds the actions of
+    * each node in the order of `Protocol.actions`. The mediated Akka Controller calls this function
+    * with the data from the `Enqueued` and `Handled` reports.
+    */
+  def enabledOf[A](
+      order: ChannelOrder,
+      queues: List[Vector[EnvelopeId]],
+      actions: List[(NodeId, List[A])]
+  ): List[Choice[A]] = {
+    val deliverable = order match {
+      case ChannelOrder.Fifo     => queues.flatMap(_.headOption)
+      case ChannelOrder.AnyOrder => queues.flatten
+    }
+    val deliveries = deliverable.sorted.map(id => Choice.Deliver(id))
+    val fires = actions.sortBy(_._1).flatMap { case (node, list) =>
+      list.map(a => Choice.Fire(node, a))
     }
     deliveries ++ fires
   }
