@@ -77,8 +77,18 @@ final case class World[S, M](
 
 object World {
 
-  /** The world before the first step. Each node gets its state from `Protocol.init`. */
+  /** The world before the first step. `Protocol.check` checks the topology, and then each node gets
+    * its state from `Protocol.init`.
+    */
   def init[S, M, A, O](
+      p: Protocol[S, M, A, O],
+      topology: Topology,
+      order: ChannelOrder
+  ): Either[NonEmptyList[TopologyError], World[S, M]] = {
+    p.check(topology).flatMap(checked => initNodes(p, checked, order))
+  }
+
+  private def initNodes[S, M, A, O](
       p: Protocol[S, M, A, O],
       topology: Topology,
       order: ChannelOrder

@@ -18,6 +18,8 @@ import cs553.core.topology.TopologyError
 import cs553.core.trace.Inspect
 import io.circe.Codec
 
+import scala.collection.immutable.SortedSet
+
 /** The one message of Echo. */
 enum EchoMsg derives Codec.AsObject {
   case Token
@@ -73,43 +75,76 @@ object Echo {
 
   private type Result = Either[ProtocolError, Step[EchoState, EchoMsg, EchoOutput]]
 
-  /** Checks the global requirements of Echo: an undirected connected graph with exactly one
-    * initiator. `Protocol.init` checks only what one node can see.
+  /** A topology that `prepare` made ready for Echo, and the nodes that it omitted. */
+  final case class Prepared(topology: Topology, omitted: SortedSet[NodeId])
+
+  /** Makes a loaded topology ready for Echo, as the college fixtures need:
+    *
+    *   - It adds the reverse of each edge, so a digraph becomes undirected.
+    *   - When `initiator` is given, that node becomes the only initiator.
+    *   - It omits each node that has no edges and is not an initiator.
+    *
+    * Then it runs `protocol.check`. When an initiator has no edges, the errors say so.
     */
-  def check(topology: Topology): Either[NonEmptyList[TopologyError], Topology] = {
-    val directed =
-      if topology.isSymmetric then { Nil }
-      else { List(TopologyError.Requirement("Echo needs an undirected graph")) }
-    val connected =
-      if topology.isConnected then { Nil }
-      else {
-        val isolated = topology.isolated.toList.map(_.value)
-        val detail =
-          if isolated.isEmpty then { "" }
-          else { s"; these nodes have no edges: ${isolated.mkString(", ")}" }
-        List(TopologyError.Requirement(s"Echo needs a connected graph$detail"))
+  def prepare(
+      topology: Topology,
+      initiator: Option[NodeId]
+  ): Either[NonEmptyList[TopologyError], Prepared] = {
+    val undirected = topology.symmetric
+    for {
+      chosen <- initiator.fold[Either[NonEmptyList[TopologyError], Topology]](Right(undirected)) {
+        n => undirected.withInitiators(Set(n))
       }
-    val initiators = topology.initiators.toList
-    val single =
-      if initiators.size == 1 then { Nil }
-      else {
-        val found = initiators.map(_.value).mkString(", ")
-        List(
+      omitted = chosen.isolated.filterNot(chosen.initiators.contains)
+      trimmed <- chosen.without(omitted.toSet)
+      checked <- protocol.check(trimmed).left.map { errors =>
+        val alone = trimmed.initiators.filter(trimmed.isolated.contains).toList.map { n =>
           TopologyError.Requirement(
-            s"Echo needs exactly one initiator, not ${initiators.size} ($found)"
+            s"the initiator ${n.value} has no edges; choose an initiator that has edges"
           )
-        )
+        }
+        errors ++ alone
       }
-    NonEmptyList.fromList(directed ++ connected ++ single) match {
-      case Some(errors) => Left(errors)
-      case None         => Right(topology)
-    }
+    } yield Prepared(checked, omitted)
   }
 
   val protocol: Protocol[EchoState, EchoMsg, EchoAction, EchoOutput] =
     new Protocol[EchoState, EchoMsg, EchoAction, EchoOutput] {
       val id: AlgorithmId = Echo.id
       val order: OrderPolicy = OrderPolicy.Default(ChannelOrder.Fifo)
+
+      /** An undirected connected graph with exactly one initiator. `init` checks only what one node
+        * can see.
+        */
+      override def check(topology: Topology): Either[NonEmptyList[TopologyError], Topology] = {
+        val directed =
+          if topology.isSymmetric then { Nil }
+          else { List(TopologyError.Requirement("Echo needs an undirected graph")) }
+        val connected =
+          if topology.isConnected then { Nil }
+          else {
+            val isolated = topology.isolated.toList.map(_.value)
+            val detail =
+              if isolated.isEmpty then { "" }
+              else { s"; these nodes have no edges: ${isolated.mkString(", ")}" }
+            List(TopologyError.Requirement(s"Echo needs a connected graph$detail"))
+          }
+        val initiators = topology.initiators.toList
+        val single =
+          if initiators.size == 1 then { Nil }
+          else {
+            val found = initiators.map(_.value).mkString(", ")
+            List(
+              TopologyError.Requirement(
+                s"Echo needs exactly one initiator, not ${initiators.size} ($found)"
+              )
+            )
+          }
+        NonEmptyList.fromList(directed ++ connected ++ single) match {
+          case Some(errors) => Left(errors)
+          case None         => Right(topology)
+        }
+      }
 
       def init(ctx: NodeCtx, attrs: NodeAttrs): Either[TopologyError, EchoState] = {
         if ctx.in == ctx.out then { Right(EchoState(attrs.role, EchoPhase.Idle, None, 0)) }

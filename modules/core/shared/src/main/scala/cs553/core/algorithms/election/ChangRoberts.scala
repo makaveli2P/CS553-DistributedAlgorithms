@@ -88,45 +88,6 @@ object ChangRoberts {
 
   private type Result = Either[ProtocolError, Step[CrState, CrMsg, CrOutput]]
 
-  /** Checks the global requirements: a directed ring, one or more initiators, a uid for each
-    * initiator and no uid on two nodes. `Protocol.init` checks only what one node can see.
-    */
-  def check(topology: Topology): Either[NonEmptyList[TopologyError], Topology] = {
-    val nodes = topology.nodes.toList
-    val degrees = nodes.filterNot { n =>
-      topology.outNeighbours(n).size == 1 && topology.inNeighbours(n).size == 1
-    }
-    val shape =
-      if degrees.isEmpty && topology.isConnected then { Nil }
-      else {
-        List(
-          TopologyError.Requirement(
-            "Chang-Roberts needs a directed ring: each node has one in-edge and one out-edge, " +
-              "and one cycle holds all nodes"
-          )
-        )
-      }
-    val initiators = topology.initiators.toList
-    val noInitiator =
-      if initiators.isEmpty then {
-        List(TopologyError.Requirement("Chang-Roberts needs one or more initiators"))
-      } else { Nil }
-    val missingUid = initiators.filter(n => topology.attrsOf(n).uid.isEmpty).map { n =>
-      TopologyError.Requirement(s"the initiator ${n.value} has no uid")
-    }
-    val uids = nodes.flatMap(n => topology.attrsOf(n).uid.map(_ -> n))
-    val duplicates = uids.groupBy(_._1).toList.sortBy(_._1).collect {
-      case (uid, owners) if owners.size > 1 =>
-        TopologyError.Requirement(
-          s"the uid ${uid.value} is on more than one node: ${owners.map(_._2.value).mkString(", ")}"
-        )
-    }
-    NonEmptyList.fromList(shape ++ noInitiator ++ missingUid ++ duplicates) match {
-      case Some(errors) => Left(errors)
-      case None         => Right(topology)
-    }
-  }
-
   /** A directed ring of `size` nodes. The uids are a seeded permutation of `1..size`. Each node is
     * an initiator with probability 1/2, and one or more nodes are initiators. Only ring nodes can
     * be initiators.
@@ -175,6 +136,45 @@ object ChangRoberts {
     new Protocol[CrState, CrMsg, CrAction, CrOutput] {
       val id: AlgorithmId = ChangRoberts.id
       val order: OrderPolicy = OrderPolicy.Default(ChannelOrder.Fifo)
+
+      /** A directed ring, one or more initiators, a uid for each initiator and no uid on two nodes.
+        * `init` checks only what one node can see.
+        */
+      override def check(topology: Topology): Either[NonEmptyList[TopologyError], Topology] = {
+        val nodes = topology.nodes.toList
+        val degrees = nodes.filterNot { n =>
+          topology.outNeighbours(n).size == 1 && topology.inNeighbours(n).size == 1
+        }
+        val shape =
+          if degrees.isEmpty && topology.isConnected then { Nil }
+          else {
+            List(
+              TopologyError.Requirement(
+                "Chang-Roberts needs a directed ring: each node has one in-edge and one out-edge, " +
+                  "and one cycle holds all nodes"
+              )
+            )
+          }
+        val initiators = topology.initiators.toList
+        val noInitiator =
+          if initiators.isEmpty then {
+            List(TopologyError.Requirement("Chang-Roberts needs one or more initiators"))
+          } else { Nil }
+        val missingUid = initiators.filter(n => topology.attrsOf(n).uid.isEmpty).map { n =>
+          TopologyError.Requirement(s"the initiator ${n.value} has no uid")
+        }
+        val uids = nodes.flatMap(n => topology.attrsOf(n).uid.map(_ -> n))
+        val duplicates = uids.groupBy(_._1).toList.sortBy(_._1).collect {
+          case (uid, owners) if owners.size > 1 =>
+            TopologyError.Requirement(
+              s"the uid ${uid.value} is on more than one node: ${owners.map(_._2.value).mkString(", ")}"
+            )
+        }
+        NonEmptyList.fromList(shape ++ noInitiator ++ missingUid ++ duplicates) match {
+          case Some(errors) => Left(errors)
+          case None         => Right(topology)
+        }
+      }
 
       def init(ctx: NodeCtx, attrs: NodeAttrs): Either[TopologyError, CrState] = {
         if ctx.out.size != 1 || ctx.in.size != 1 then {

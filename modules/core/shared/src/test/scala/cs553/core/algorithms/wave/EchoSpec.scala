@@ -19,6 +19,7 @@ import cs553.core.trace.StopRule
 import cs553.core.trace.TraceEvent
 import cs553.core.world.Graphs
 import cs553.core.world.PropertyBudget
+import cs553.core.world.RunError
 import cs553.core.world.Simulator
 import org.scalacheck.Gen
 import org.scalatest.EitherValues
@@ -244,11 +245,19 @@ final class EchoSpec extends AnyFunSuite with PropertyBudget with EitherValues {
     )
     val none = Graphs.fixed(Topology.undirected(ids(0, 1), List(NodeId(0) -> NodeId(1))))
     val two = Graphs.fixed(line(3).withInitiators(Set(NodeId(0), NodeId(2))))
-    assert(Echo.check(directed).left.value.size == 1)
-    assert(Echo.check(disconnected).left.value.size == 1)
-    assert(Echo.check(none).left.value.size == 1)
-    assert(Echo.check(two).left.value.size == 1)
-    assert(Echo.check(line(4)) == Right(line(4)))
+    assert(Echo.protocol.check(directed).left.value.size == 1)
+    assert(Echo.protocol.check(disconnected).left.value.size == 1)
+    assert(Echo.protocol.check(none).left.value.size == 1)
+    assert(Echo.protocol.check(two).left.value.size == 1)
+    assert(Echo.protocol.check(line(4)) == Right(line(4)))
+  }
+
+  test("regression: the Simulator refuses two initiators with BadTopology, not Rejected events") {
+    val two = Graphs.fixed(line(3).withInitiators(Set(NodeId(0), NodeId(2))))
+    val spec =
+      RunSpec(Echo.id, two, ChannelOrder.Fifo, Policy.Seeded(Seed(1L)), StopRule.AtQuiescence, 100)
+    val errors = Echo.protocol.check(two).left.value
+    assert(Simulator.run(Echo.protocol, spec).left.value == RunError.BadTopology(errors))
   }
 
   // -----------------------------------------------------------------------------------------------
@@ -262,7 +271,7 @@ final class EchoSpec extends AnyFunSuite with PropertyBudget with EitherValues {
   )
 
   test("inputEcho.dot: check rejects the file as it is, because the Init node 0 has no edges") {
-    val errors = Echo.check(inputEcho.symmetric).left.value.toList
+    val errors = Echo.protocol.check(inputEcho.symmetric).left.value.toList
     assert(errors.size == 1)
     assert(errors.map(_.render).exists(_.contains("these nodes have no edges: 0")))
   }
@@ -271,7 +280,7 @@ final class EchoSpec extends AnyFunSuite with PropertyBudget with EitherValues {
     val topology = Graphs.fixed(
       inputEcho.symmetric.without(Set(NodeId(0))).flatMap(_.withInitiators(Set(NodeId(1))))
     )
-    assert(Echo.check(topology).isRight)
+    assert(Echo.protocol.check(topology).isRight)
     val run = runEcho(topology, 7L)
     assert(topology.nodes.toList == ids(1, 2, 3, 4, 5))
     assert(sentCount(run) == 14)
@@ -279,6 +288,21 @@ final class EchoSpec extends AnyFunSuite with PropertyBudget with EitherValues {
     assert(run.decisions.toList == List(NodeId(1) -> EchoOutput.WaveComplete))
     val states = finalStates(run)
     assert(ids(2, 3, 4, 5).forall(n => rootOf(states, n, Set.empty).contains(NodeId(1))))
+  }
+
+  test("inputEcho.dot: prepare explains that the initiator 0 has no edges") {
+    val errors = Echo.prepare(inputEcho, None).left.value.toList.map(_.render)
+    assert(errors.exists(_.contains("these nodes have no edges: 0")))
+    assert(errors.contains("the initiator 0 has no edges; choose an initiator that has edges"))
+  }
+
+  test("inputEcho.dot: prepare with initiator 1 omits node 0 and gives an undirected graph") {
+    val prepared = Echo.prepare(inputEcho, Some(NodeId(1))).value
+    assert(prepared.omitted.toList == ids(0))
+    assert(prepared.topology.nodes.toList == ids(1, 2, 3, 4, 5))
+    assert(prepared.topology.isSymmetric)
+    assert(prepared.topology.initiators.toList == ids(1))
+    assert(Echo.prepare(inputEcho, Some(NodeId(9))).isLeft)
   }
 
   test("Inspect gives labels and fields for the state, the message, the action and the output") {

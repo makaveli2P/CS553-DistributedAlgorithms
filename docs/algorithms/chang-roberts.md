@@ -10,7 +10,7 @@ Source: `modules/core/shared/src/main/scala/cs553/core/algorithms/election/Chang
 
 ## Variant in this project
 
-- Topology: a directed ring. One or more nodes are initiators, and each initiator has a `uid`. A non-initiator can have a `uid`, but the algorithm does not use it. No two nodes have the same `uid`. `ChangRoberts.check` tests these global requirements. `Protocol.init` tests that the node has one in-edge and one out-edge, and that an initiator has a `uid`.
+- Topology: a directed ring. One or more nodes are initiators, and each initiator has a `uid`. A non-initiator can have a `uid`, but the algorithm does not use it. No two nodes have the same `uid`. `ChangRoberts.protocol.check` tests these global requirements, and `World.init` calls it before each run. `Protocol.init` tests that the node has one in-edge and one out-edge, and that an initiator has a `uid`.
 - Channel order: `Fifo` by default. The algorithm is also correct with `AnyOrder`.
 - Messages: `Elect(uid)` and `Leader(uid)`. Action: `Wake`, only at an initiator that is `Asleep`.
 - Decisions: the leader decides `Elected(uid)`. Each other node decides `Follows(uid)` when the announcement reaches it. So each node decides exactly once.
@@ -63,7 +63,7 @@ An example test reaches the worst case: on a ring where the uids decrease along 
 - **chang-roberts-1:** an initiator that a larger bid defeats before `Wake` becomes `Passive`, and `Wake` is not offered after that.
 - **chang-roberts-3:** on the college ring `0(10) -> 1(20) -> 2(5) -> 3(15)` with only node 2 as initiator, uid 5 wins.
 - **chang-roberts-4:** the college code put the Terminator (map key -1) into the pool of possible initiators. In the new design, this cannot occur. An initiator is an attribute of a topology node, so `Topology.withInitiators` rejects an unknown node, and `ChangRoberts.randomRing` chooses only ring nodes. `World.enabled` offers `Wake` only at nodes of the topology, and a script that fires `Wake` at node -1 gives `BadChoice(UnknownNode(-1))`. The test checks each of these facts, and it checks that each `Wake` in a run fires at an initiator of the ring.
-- **chang-roberts-5:** `ChangRoberts.check` rejects a duplicate uid, a missing uid on an initiator, a topology with no initiator and a graph that is not a directed ring.
+- **chang-roberts-5:** `ChangRoberts.protocol.check` rejects a duplicate uid, a missing uid on an initiator, a topology with no initiator and a graph that is not a directed ring.
 
 ## Example
 

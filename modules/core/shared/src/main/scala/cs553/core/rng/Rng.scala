@@ -68,4 +68,10 @@ object Rng {
   /** The generator for one run. Seed all randomness here (coding rule 18). */
   @targetName("fromSeed")
   def apply(seed: Seed): Rng = new Rng(seed.value)
+
+  /** A second seed from `seed`: the first value of its generator. A generator from the derived seed
+    * gives a sequence that is not a shifted copy of the sequence from `seed`. Use it when one run
+    * seed must feed two separate random choices, for example a ring and a schedule.
+    */
+  def derive(seed: Seed): Seed = Seed(Rng(seed).nextLong._2)
 }

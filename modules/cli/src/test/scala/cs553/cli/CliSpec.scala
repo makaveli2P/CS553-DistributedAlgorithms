@@ -1,5 +1,6 @@
 package cs553.cli
 
+import cs553.core.algorithms.election.ChangRoberts
 import cs553.core.algorithms.wave.EchoAction
 import cs553.core.algorithms.wave.EchoMsg
 import cs553.core.algorithms.wave.EchoOutput
@@ -7,6 +8,8 @@ import cs553.core.algorithms.wave.EchoState
 import cs553.core.codec.RunJson
 import cs553.core.ids.NodeId
 import cs553.core.protocol.ChannelOrder
+import cs553.core.rng.Rng
+import cs553.core.rng.Seed
 import cs553.core.trace.Outcome
 import org.scalatest.EitherValues
 import org.scalatest.funsuite.AnyFunSuite
@@ -77,7 +80,8 @@ final class CliSpec extends AnyFunSuite with EitherValues {
     val args = simulate("simulate --alg echo --topology inputEcho.dot --seed 7")
     val error = Simulate.run(args, Some(inputEcho)).left.value
     assert(error.contains("these nodes have no edges: 0"))
-    assert(error.contains("hint: the initiator 0 has no edges"))
+    assert(error.contains("the initiator 0 has no edges; choose an initiator that has edges"))
+    assert(error.contains("hint: use --initiator to choose the initiator."))
   }
 
   test("simulate echo on inputEcho.dot with --initiator 1 prints the trace and gives JSON") {
@@ -100,6 +104,29 @@ final class CliSpec extends AnyFunSuite with EitherValues {
     assert(report.text.count(_.contains("DECIDES Follows(")) == 5)
     assert(report.text.exists(_.startsWith("finished: Quiescent")))
     assert(Simulate.run(args, None) == Simulate.run(args, None))
+  }
+
+  test("simulate chang-roberts takes the ring from a seed that differs from the schedule seed") {
+    val report = Simulate.run(simulate("simulate --alg chang-roberts --ring 6 --seed 7"), None)
+    val ring = ChangRoberts.randomRing(6, Rng.derive(Seed(7L))).value
+    val expected = ring.nodes.toList
+      .map { n =>
+        val uid = ring.attrsOf(n).uid.fold("-")(_.value.toString)
+        val mark = if ring.initiators.contains(n) then { "*" }
+        else { "" }
+        s"${n.value}(uid $uid$mark)"
+      }
+      .mkString(", ")
+    assert(report.value.text.contains(s"nodes: $expected (* marks an initiator)"))
+    assert(Rng.derive(Seed(7L)) != Seed(7L))
+  }
+
+  test("simulate chang-roberts on a DOT ring with a duplicate uid explains the requirement") {
+    val dot = """digraph { "0" [uid=3, initiator=true]; "1" [uid=3]; "0" -> "1"; "1" -> "0" }"""
+    val error =
+      Simulate.run(simulate("simulate --alg chang-roberts --topology r.dot"), Some(dot)).left.value
+    assert(error.startsWith("the topology does not meet the requirements of Chang-Roberts:"))
+    assert(error.contains("the uid 3 is on more than one node"))
   }
 
   test("simulate rejects --ring for echo and a bad DOT file") {

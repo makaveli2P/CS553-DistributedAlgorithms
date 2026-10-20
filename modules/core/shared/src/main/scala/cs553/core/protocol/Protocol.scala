@@ -1,5 +1,6 @@
 package cs553.core.protocol
 
+import cats.data.NonEmptyList
 import cs553.core.ids.AlgorithmId
 import cs553.core.ids.NodeId
 import cs553.core.ids.RuleId
@@ -81,6 +82,11 @@ enum ProtocolError derives Codec.AsObject {
 trait Protocol[S, M, A, O] {
   def id: AlgorithmId
   def order: OrderPolicy
+
+  /** Checks the global requirements of the protocol on the whole topology, for example a ring or
+    * one initiator. `World.init` calls it before `init`. The default accepts each topology.
+    */
+  def check(topology: Topology): Either[NonEmptyList[TopologyError], Topology] = Right(topology)
 
   /** The initial state of one node, or an error when the topology does not suit the protocol. */
   def init(ctx: NodeCtx, attrs: NodeAttrs): Either[TopologyError, S]

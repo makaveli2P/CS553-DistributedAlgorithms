@@ -99,7 +99,7 @@ final class ChangRobertsSpec extends AnyFunSuite with PropertyBudget with Either
   test("property: each run ends quiescent, with no Rejected event") {
     forAll(Graphs.ringWithUids, Gen.long, orders) {
       (topology: Topology, seed: Long, order: ChannelOrder) =>
-        assert(ChangRoberts.check(topology).isRight)
+        assert(p.check(topology).isRight)
         val run = runCr(topology, seed, order)
         assert(run.outcome.contains(Outcome.Quiescent))
         assert(run.trace.collect { case r @ TraceEvent.Rejected(_, _, _, _) => r }.isEmpty)
@@ -244,7 +244,7 @@ final class ChangRobertsSpec extends AnyFunSuite with PropertyBudget with Either
       val generated = ChangRoberts.randomRing(size, Seed(seed)).value
       assert(generated.initiators.nonEmpty)
       assert(generated.initiators.subsetOf(generated.nodes))
-      assert(ChangRoberts.check(generated).isRight)
+      assert(p.check(generated).isRight)
     }
     val topology = collegeRing(Set(0))
     assert(topology.withInitiators(Set(NodeId(-1))).isLeft)
@@ -256,12 +256,12 @@ final class ChangRobertsSpec extends AnyFunSuite with PropertyBudget with Either
   }
 
   test("check rejects a duplicate uid, no initiator, an initiator with no uid and a non-ring") {
-    assert(ChangRoberts.check(ring(List(3, 3, 1), Set(0))).isLeft)
-    assert(ChangRoberts.check(ring(List(3, 2, 1), Set.empty)).isLeft)
+    assert(p.check(ring(List(3, 3, 1), Set(0))).isLeft)
+    assert(p.check(ring(List(3, 2, 1), Set.empty)).isLeft)
     val noUid = Graphs.fixed(
       Topology.ring(3, Map(NodeId(0) -> NodeAttrs(Role.Initiator, None, Map.empty)))
     )
-    assert(ChangRoberts.check(noUid).isLeft)
+    assert(p.check(noUid).isLeft)
     assert(p.init(NodeCtx.of(noUid, NodeId(0)), noUid.attrsOf(NodeId(0))).isLeft)
     val undirected = Graphs.fixed(
       Topology.undirected(
@@ -270,8 +270,8 @@ final class ChangRobertsSpec extends AnyFunSuite with PropertyBudget with Either
         collegeRing(Set(0)).attrs.filter { case (n, _) => n.value < 3 }
       )
     )
-    assert(ChangRoberts.check(undirected).isLeft)
-    assert(ChangRoberts.check(collegeRing(Set(0, 2))).isRight)
+    assert(p.check(undirected).isLeft)
+    assert(p.check(collegeRing(Set(0, 2))).isRight)
   }
 
   test("randomRing is a pure function of its seed") {

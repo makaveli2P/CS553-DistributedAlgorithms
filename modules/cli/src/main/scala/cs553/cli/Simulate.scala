@@ -5,6 +5,7 @@ import cs553.core.algorithms.election.ChangRoberts
 import cs553.core.algorithms.wave.Echo
 import cs553.core.codec.RunJson
 import cs553.core.protocol.Protocol
+import cs553.core.rng.Rng
 import cs553.core.rng.Seed
 import cs553.core.topology.Topology
 import cs553.core.topology.TopologyError
@@ -12,6 +13,7 @@ import cs553.core.trace.Inspect
 import cs553.core.trace.Policy
 import cs553.core.trace.RunSpec
 import cs553.core.trace.StopRule
+import cs553.core.world.RunError
 import cs553.core.world.Simulator
 import io.circe.Encoder
 
@@ -46,7 +48,7 @@ object Simulate {
         args.alg match {
           case Alg.ChangRoberts =>
             ChangRoberts
-              .randomRing(size, Seed(args.seed))
+              .randomRing(size, Rng.derive(Seed(args.seed)))
               .left
               .map(errors("cannot make the ring:", _))
           case Alg.Echo => Left("--ring is only for chang-roberts; give Echo a --topology")
@@ -54,48 +56,36 @@ object Simulate {
     }
   }
 
-  private def withInitiator(
-      args: SimulateArgs,
-      topology: Topology
-  ): Either[String, Topology] = {
-    args.initiator.fold[Either[String, Topology]](Right(topology)) { n =>
-      topology.withInitiators(Set(n)).left.map(errors("--initiator is not valid:", _))
-    }
-  }
-
   private def echo(args: SimulateArgs, loaded: Topology): Either[String, Report] = {
     for {
-      chosen <- withInitiator(args, loaded.symmetric)
-      dropped = chosen.isolated.filterNot(chosen.initiators.contains)
-      trimmed <- chosen.without(dropped.toSet).left.map(errors("the topology is empty:", _))
-      checked <- Echo.check(trimmed).left.map { list =>
-        val hint = trimmed.initiators.filter(trimmed.isolated.contains).toList.map { n =>
-          s"hint: the initiator ${n.value} has no edges. Use --initiator to choose a node " +
-            "with edges."
+      prepared <- Echo.prepare(loaded, args.initiator).left.map { list =>
+        val hint = args.initiator match {
+          case None    => List("hint: use --initiator to choose the initiator.")
+          case Some(_) => Nil
         }
         (errors("the topology does not meet the requirements of Echo:", list) :: hint)
           .mkString("\n")
       }
-      notes = dropped.toList.map(n => s"note: node ${n.value} has no edges, so the run omits it")
-      report <- simulate(Echo.protocol, args, checked, "Echo", notes)
+      notes = prepared.omitted.toList.map { n =>
+        s"note: node ${n.value} has no edges, so the run omits it"
+      }
+      report <- simulate(Echo.protocol, args, prepared.topology, "Echo", notes)
     } yield report
   }
 
   private def changRoberts(args: SimulateArgs, loaded: Topology): Either[String, Report] = {
     for {
-      chosen <- withInitiator(args, loaded)
-      checked <- ChangRoberts
-        .check(chosen)
-        .left
-        .map(errors("the topology does not meet the requirements of Chang-Roberts:", _))
-      uids = checked.nodes.toList.map { n =>
-        val uid = checked.attrsOf(n).uid.fold("-")(_.value.toString)
-        val mark = if checked.initiators.contains(n) then { "*" }
+      chosen <- args.initiator.fold[Either[String, Topology]](Right(loaded)) { n =>
+        loaded.withInitiators(Set(n)).left.map(errors("--initiator is not valid:", _))
+      }
+      uids = chosen.nodes.toList.map { n =>
+        val uid = chosen.attrsOf(n).uid.fold("-")(_.value.toString)
+        val mark = if chosen.initiators.contains(n) then { "*" }
         else { "" }
         s"${n.value}(uid $uid$mark)"
       }
       nodes = s"nodes: ${uids.mkString(", ")} (* marks an initiator)"
-      report <- simulate(ChangRoberts.protocol, args, checked, "Chang-Roberts", List(nodes))
+      report <- simulate(ChangRoberts.protocol, args, chosen, "Chang-Roberts", List(nodes))
     } yield report
   }
 
@@ -124,7 +114,12 @@ object Simulate {
       StopRule.AtQuiescence,
       args.stepLimit
     )
-    Simulator.run(p, spec).left.map(e => s"the Simulator cannot run: $e").map { simulation =>
+    val result = Simulator.run(p, spec).left.map {
+      case RunError.BadTopology(list) =>
+        errors(s"the topology does not meet the requirements of $name:", list)
+      case other => s"the Simulator cannot run: $other"
+    }
+    result.map { simulation =>
       val run = simulation.run
       val edges = topology.edges.size
       val header =

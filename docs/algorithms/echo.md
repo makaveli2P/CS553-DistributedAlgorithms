@@ -10,7 +10,7 @@ Source: `modules/core/shared/src/main/scala/cs553/core/algorithms/wave/Echo.scal
 
 ## Variant in this project
 
-- Topology: an undirected connected graph with exactly one initiator. `Echo.check` tests these global requirements. `Protocol.init` tests only that each node has the same in-neighbours and out-neighbours.
+- Topology: an undirected connected graph with exactly one initiator. `Echo.protocol.check` tests these global requirements, and `World.init` calls it before each run. `Protocol.init` tests only that each node has the same in-neighbours and out-neighbours.
 - Channel order: `Fifo` by default. The algorithm is also correct with `AnyOrder`.
 - Message: `EchoMsg.Token`. Action: `EchoAction.Wake`, only at the initiator. Decision: `EchoOutput.WaveComplete`, only at the initiator.
 - State: `EchoState(role, phase, parent, received)`. The phase is one enum: `Idle`, `Waiting`, `Echoed` or `Decided`. The state has no Boolean flags.
@@ -60,7 +60,7 @@ The run sends 4 messages, which is 2|E| for 2 edges.
 
 ## The college fixture `inputEcho.dot`
 
-The file is a `digraph`. Echo uses its symmetric closure. The file marks node 0 as `Init`, but node 0 has no edges. So `Echo.check` rejects the file as it is, with the message "Echo needs a connected graph; these nodes have no edges: 0". The college code read only the edge lines and chose a random initiator, so it did not see this problem.
+The file is a `digraph`. `Echo.prepare` adds the reverse of each edge. The file marks node 0 as `Init`, but node 0 has no edges. So `Echo.prepare` rejects the file as it is, with the messages "Echo needs a connected graph; these nodes have no edges: 0" and "the initiator 0 has no edges; choose an initiator that has edges". The college code read only the edge lines and chose a random initiator, so it did not see this problem.
 
 To run Echo on the file, remove node 0 and choose an initiator in the connected part. The CLI does this with `--initiator`:
 
@@ -68,4 +68,4 @@ To run Echo on the file, remove node 0 and choose an initiator in the connected 
 sbt "cli/run simulate --alg echo --topology fixtures/topologies/inputEcho.dot --initiator 1 --seed 7"
 ```
 
-The CLI removes each node that has no edges and is not an initiator. The run has 5 nodes and 7 edges, and it sends 14 messages.
+`Echo.prepare` removes each node that has no edges and is not an initiator. The CLI calls it, so the run omits the same nodes in each front end that calls it. The run has 5 nodes and 7 edges, and it sends 14 messages.
