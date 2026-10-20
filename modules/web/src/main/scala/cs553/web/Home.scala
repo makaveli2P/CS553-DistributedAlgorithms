@@ -9,7 +9,8 @@ import org.scalajs.dom
 
 /** The home screen. Its one question: which algorithm to open. Each algorithm is one card with a
   * picture of the end of its default run. The algorithms that are not ready are small muted tiles
-  * with no picture, under a faint "Later" label, so the ready cards hold the visual weight.
+  * with no picture, under a faint "Later" label, so the ready cards hold the visual weight. When
+  * all the algorithms are ready, the screen shows no "Later" label.
   */
 object Home {
 
@@ -47,17 +48,21 @@ object Home {
             )
           }
         ),
-        p(cls("later-label"), "Later"),
-        div(
-          cls("cards", "cards--later"),
-          later.map { entry =>
+        if later.isEmpty then emptyNode
+        else
+          div(
+            p(cls("later-label"), "Later"),
             div(
-              cls("card", "card--later"),
-              aria.disabled(true),
-              span(cls("card-name"), entry.name)
+              cls("cards", "cards--later"),
+              later.map { entry =>
+                div(
+                  cls("card", "card--later"),
+                  aria.disabled(true),
+                  span(cls("card-name"), entry.name)
+                )
+              }
             )
-          }
-        )
+          )
       )
     )
   }

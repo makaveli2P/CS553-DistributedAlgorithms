@@ -13,14 +13,15 @@ Each algorithm is one pure Scala 3 model. The same model runs in three engines: 
 
 This branch is a rewrite of the college project. The original code is at the tag `college-original`.
 
-Milestones M0 to M3 are done:
+Milestones M0 to M4 are done:
 
 - M0: the build, the CI, the coding rules and the ADRs.
 - M1: the pure model, the Simulator, Echo and Chang-Roberts.
 - M2: the web sandbox for Echo and Chang-Roberts.
 - M3: the mediated Akka engine, with channel actors and a Controller, and the CLI command `record`. For each algorithm, preset, channel order and 20 seeds, a test shows that the Akka trace is equal to the Simulator trace.
+- M4: the other six algorithms: Tarry, Tree, Franklin, Chandy-Lamport, Lai-Yang and Bracha-Toueg. Each algorithm has property tests, regression tests for the college bugs, presets, golden traces, a sandbox and the Akka conformance tests. The design put Chandy-Lamport, Lai-Yang and Bracha-Toueg in M5. They are done now, together with their overlays and invariant lines.
 
-Milestones M4 to M7 add the other six algorithms, the space-time view, the lessons and the free-run engine. The descriptions of the algorithms are in [docs/algorithms](docs/algorithms).
+Milestones M6 and M7 add the space-time view, the lessons and the free-run engine. The descriptions of the algorithms are in [docs/algorithms](docs/algorithms).
 
 ## Modules
 
