@@ -12,6 +12,7 @@ import cs553.core.rng.Seed
 import cs553.core.topology.NodeAttrs
 import cs553.core.topology.Role
 import cs553.core.topology.Topology
+import cs553.core.trace.Chip
 import cs553.core.trace.Inspect
 import cs553.core.trace.Mark
 import cs553.core.trace.NodeFill
@@ -254,6 +255,19 @@ final class FranklinSpec
     assert(step.sends == List(Send(NodeId(2), FrMsg.Id(Uid(8), 2))))
   }
 
+  test("a node that gets its own uid from both sides while it holds a later message breaks") {
+    // Only one active node can get its own uid back, so no later-round message can exist then.
+    val topology = ring(List(5, 9, 2), Set(0, 1, 2))
+    val ctx = NodeCtx.of(topology, NodeId(1))
+    val forged =
+      FrState.Active(Uid(9), 1, List(Heard(NodeId(0), Uid(9), 1), Heard(NodeId(0), Uid(7), 2)))
+    val got = p.onMessage(ctx, forged, NodeId(2), FrMsg.Id(Uid(9), 1))
+    assert(got.left.exists {
+      case ProtocolError.InvariantBroken(_) => true
+      case _                                => false
+    })
+  }
+
   test("an active node rejects a message two rounds ahead and a second message from one side") {
     val topology = ring(List(5, 9, 2), Set(0, 1, 2))
     val ctx = NodeCtx.of(topology, NodeId(1))
@@ -325,6 +339,7 @@ final class FranklinSpec
 
   test("Inspect gives labels and fields for the state, the message, the action and the output") {
     assert(Inspect[FrMsg].label(FrMsg.Id(Uid(7), 2)) == "Id(7, round 2)")
+    assert(Inspect[FrMsg].chip(FrMsg.Id(Uid(7), 2)) == Chip.Text("7\u00b7r2"))
     assert(Inspect[FrMsg].fields(FrMsg.Leader(Uid(9))) == List("uid" -> "9"))
     assert(Inspect[FrAction].label(FrAction.Wake) == "Wake")
     assert(Inspect[FrOutput].label(FrOutput.Follows(Uid(9))) == "the leader is uid 9")

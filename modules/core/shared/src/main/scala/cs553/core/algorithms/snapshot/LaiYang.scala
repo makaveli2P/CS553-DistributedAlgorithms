@@ -16,6 +16,7 @@ import cs553.core.topology.Role
 import cs553.core.topology.Topology
 import cs553.core.topology.TopologyError
 import cs553.core.trace.ChannelRecord
+import cs553.core.trace.Chip
 import cs553.core.trace.Inspect
 import cs553.core.trace.Mark
 import cs553.core.trace.NodeFill
@@ -452,14 +453,21 @@ object LyRecord {
 
 object LyState {
 
-  /** The fills of the white and the red nodes, a cut mark and a badge at each red node, and the
-    * record state of each in-channel of a red node. An initiator that is done gets the `Chosen`
-    * fill, which the home thumbnail shows.
+  /** The fills of the white nodes and of the red nodes that still record, a cut mark at each red
+    * node, the record state of each in-channel of a red node, an "initiator" badge until the
+    * initiator decides, and the snapshot total when each node is done. An initiator that is done
+    * gets the `Chosen` fill, which the home thumbnail shows. Like Chandy-Lamport, a node that is
+    * done keeps no red fill: the decided fill shows it.
     */
   given Overlay[LyState] = new Overlay[LyState] {
     def marks(states: SortedMap[NodeId, LyState]): List[Mark] = {
-      states.toList.flatMap { case (node, s) =>
-        s.phase match {
+      val perNode = states.toList.flatMap { case (node, s) =>
+        val role = (s.role, s.phase) match {
+          case (Role.Initiator, LyPhase.Done(_)) => Nil
+          case (Role.Initiator, _)               => List(Mark.Badge(node, "initiator"))
+          case (Role.NonInitiator, _)            => Nil
+        }
+        val phase = s.phase match {
           case LyPhase.White             => List(Mark.Fill(node, NodeFill.White))
           case LyPhase.Recording(record) =>
             Mark.Fill(node, NodeFill.Red) :: Mark.Cut(node) :: channels(node, s, record)
@@ -468,17 +476,20 @@ object LyState {
               case LyTrigger.Initiated => List(Mark.Fill(node, NodeFill.Chosen))
               case LyTrigger.RedTransfer | LyTrigger.ControlMessage => Nil
             }
-            (Mark.Fill(node, NodeFill.Red) :: Mark.Cut(node) :: channels(node, s, record)) ++ chosen
+            (Mark.Cut(node) :: channels(node, s, record)) ++ chosen
         }
+        role ++ phase
       }
+      val total = Option
+        .when(states.nonEmpty)(LaiYang.snapshotTotal(states.values))
+        .flatten
+        .map(t => Mark.Fact(s"snapshot total $t"))
+      perNode ++ total.toList
     }
   }
 
   private def channels(node: NodeId, s: LyState, record: LyRecord): List[Mark] = {
-    val inputs = s.receivedWhite.keys.toList
-    val closed = inputs.count(s.closed)
-    val badge = Mark.Badge(node, s"$closed of ${inputs.size} closed")
-    badge :: inputs.map { from =>
+    s.receivedWhite.keys.toList.map { from =>
       val state = if s.closed(from) then { ChannelRecord.Closed }
       else { ChannelRecord.Recording }
       Mark.Channel(from, node, state, record.channels.getOrElse(from, Nil).map(_.toString))
@@ -487,11 +498,11 @@ object LyState {
 
   given Inspect[LyState] = new Inspect[LyState] {
 
-    /** Two parts: the phase and the balance that matters in it. */
-    def label(s: LyState): String = s.phase match {
-      case LyPhase.White             => s"white, balance ${s.balance}"
-      case LyPhase.Recording(record) => s"recording, recorded ${record.balance}"
-      case LyPhase.Done(record)      => s"done, recorded ${record.balance}"
+    /** One line for the live balance, and one line for the saved balance after the snapshot, as in
+      * Chandy-Lamport. The fill shows the color.
+      */
+    def label(s: LyState): String = s.record.fold(s"balance ${s.balance}") { r =>
+      s"balance ${s.balance}, saved ${r.balance}"
     }
 
     def fields(s: LyState): List[(String, String)] = {
@@ -504,7 +515,7 @@ object LyState {
         "phase" -> phase,
         "color" -> Inspect[LyColor].label(s.color),
         "balance" -> s.balance.toString,
-        "budget" -> s.budget.toString,
+        "spends left" -> s.budget.toString,
         "white sent" -> LyRecord.countsText(s.sentWhite),
         "white received" -> LyRecord.countsText(s.receivedWhite)
       )
@@ -538,6 +549,11 @@ object LyMsg {
         List("amount" -> amount.toString, "color" -> Inspect[LyColor].label(color))
       case LyMsg.Control(count) => List("white transfers before the snapshot" -> count.toString)
     }
+    override def chip(m: LyMsg): Chip = m match {
+      case LyMsg.Transfer(amount, LyColor.White) => Chip.Text(amount.toString)
+      case LyMsg.Transfer(amount, LyColor.Red)   => Chip.Red(amount.toString)
+      case LyMsg.Control(_)                      => Chip.Control
+    }
   }
 }
 
@@ -545,7 +561,7 @@ object LyAction {
   given Inspect[LyAction] = new Inspect[LyAction] {
     def label(a: LyAction): String = a match {
       case LyAction.Initiate          => "Initiate"
-      case LyAction.Spend(to, amount) => s"Spend($amount to ${to.value})"
+      case LyAction.Spend(to, amount) => s"Spend $amount to ${to.value}"
     }
     def fields(a: LyAction): List[(String, String)] = a match {
       case LyAction.Initiate          => Nil
@@ -559,7 +575,7 @@ object LyOutput {
   given Inspect[LyOutput] = new Inspect[LyOutput] {
     def label(o: LyOutput): String = o match {
       case LyOutput.Recorded(balance, channels) =>
-        s"recorded balance $balance, channels ${LyRecord.channelsText(channels)}"
+        s"saved $balance, in transit ${channels.values.flatten.sum}"
     }
     def fields(o: LyOutput): List[(String, String)] = o match {
       case LyOutput.Recorded(balance, channels) =>

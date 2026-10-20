@@ -178,6 +178,24 @@ trait Inspect[A] {
 
   /** The named fields, for a detail panel. */
   def fields(a: A): List[(String, String)]
+
+  /** The short chip that the canvas draws for a message. The full `label` goes to the hover tip and
+    * the panel. The default is a neutral chip with the full label.
+    */
+  def chip(a: A): Chip = Chip.Text(label(a))
+}
+
+/** How the canvas draws a message. */
+enum Chip {
+
+  /** A neutral chip with short text. */
+  case Text(text: String)
+
+  /** A chip with the red tint and short text: a message that a red node sent (Lai-Yang). */
+  case Red(text: String)
+
+  /** A small diamond with no text: a control message of a snapshot. */
+  case Control
 }
 
 object Inspect {

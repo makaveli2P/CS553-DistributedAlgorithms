@@ -50,7 +50,8 @@ Each other combination returns `Left(ProtocolError)`, for example a message two 
 
 ## UI
 
-- `Overlay[FrState]`: the leader is `Fill(Chosen)`. Each passive node and each follower is `Fill(Passive)`. Each active node shows the badge "round r".
+- `Overlay[FrState]`: the leader is `Fill(Chosen)`. Each passive node and each follower is `Fill(Passive)`. Each active node shows the badge "round r". `Fact("round r: k active")` gives the number of active nodes in the newest round.
+- The canvas draws `Id(6, round 2)` as the short chip "6·r2". The tip and the panel show the full message. A follower keeps its uid in the label.
 - The node panel shows the round and the `Id` messages in `heard`, so the learner sees the comparison with the two neighbours.
 
 ## Invariants

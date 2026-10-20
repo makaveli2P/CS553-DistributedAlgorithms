@@ -2,6 +2,8 @@ package cs553.web
 
 import cs553.core.ids.NodeId
 import cs553.core.protocol.ChannelOrder
+import cs553.core.trace.ChannelRecord
+import cs553.core.trace.Chip
 import cs553.core.trace.EdgeStyle
 import cs553.core.trace.EnvelopeId
 import cs553.core.trace.NodeFill
@@ -54,8 +56,10 @@ final case class NodeView(
     actions: List[ActionView]
 )
 
-/** One drawn edge. An undirected pair of channels is one edge with `directed = false`. `style` is
-  * the last `OnEdge` mark of the overlay for the edge, in either direction.
+/** One drawn edge. An undirected pair of channels is one edge with `directed = false`, except when
+  * a `WaitsFor` mark gives it a direction: then `a` is the waiter. `style` is the last `OnEdge`
+  * mark of the overlay for the edge, in either direction, other than `WaitsFor`. `record` is the
+  * record state of the channels of the edge in a snapshot: `Recording` when one channel records.
   */
 final case class EdgeView(
     from: NodeId,
@@ -63,12 +67,12 @@ final case class EdgeView(
     a: Point,
     b: Point,
     directed: Boolean,
-    style: Option[EdgeStyle]
+    style: Option[EdgeStyle],
+    record: Option[ChannelRecord]
 )
 
-/** The text of one `Channel` mark, for example "recording: 5, 3". It sits next to the middle of the
-  * channel `from -> to`, on the right side of the direction, so that the two directions of an
-  * undirected edge do not overlap.
+/** The recorded amounts of one `Channel` mark, for example "5, 3". It sits next to the channel
+  * `from -> to`, near the receiver, which records the channel, and clear of the labels.
   */
 final case class NoteView(from: NodeId, to: NodeId, at: Point, text: String)
 
@@ -84,11 +88,13 @@ enum Blocked {
 
 /** One envelope in a mailbox. `at` is its centre and `toward` is the centre of the receiver.
   * `place` is its place in the queue of its channel, from 0. `fresh` is true when the shown step
-  * sent it.
+  * sent it. `chip` is what the canvas draws, and `label` is the full text for the tip and the
+  * panel.
   */
 final case class EnvelopeView(
     id: EnvelopeId,
     label: String,
+    chip: Chip,
     fields: List[(String, String)],
     sentAt: Option[Int],
     place: Int,
@@ -110,7 +116,9 @@ final case class EnvelopeView(
 /** The envelopes of one queue that do not fit on the edge: a "+n" mark at `at`. */
 final case class MoreView(from: NodeId, to: NodeId, at: Point, count: Int)
 
-/** The canvas and the text lines of one step. */
+/** The canvas and the text lines of one step. `decisions` are the decisions of the shown step, and
+  * `facts` are the `Fact` marks of the overlay.
+  */
 final case class Frame(
     box: Box,
     nodes: List[NodeView],
@@ -121,6 +129,8 @@ final case class Frame(
     step: Int,
     last: Int,
     status: String,
+    decisions: List[String],
+    facts: List[String],
     decidedAt: Option[Int],
     quiescentAt: Option[Int],
     limitAt: Option[Int],

@@ -9,6 +9,7 @@ import cs553.core.rng.Seed
 import cs553.core.topology.Edge
 import cs553.core.trace.ChannelRecord
 import cs553.core.trace.Choice
+import cs553.core.trace.EdgeStyle
 import cs553.core.trace.EnvelopeId
 import cs553.core.trace.Mark
 import cs553.core.trace.Outcome
@@ -176,28 +177,31 @@ final case class Session[S, M, A, O](
     case Choice.Drop(id)           => s"${msgLabel(id)} from node ${id.from.value} was lost"
   }
 
-  /** "and sent Token to nodes 3, 4 and 5" or "and sent nothing", from the ids of one step. */
+  /** " and sent Token to nodes 3, 4 and 5", or nothing, from the ids of one step. */
   private def sends(sent: List[EnvelopeId]): String = {
     val labelled = sent.map(id => msgLabel(id) -> id.to)
     val parts = labelled.map(_._1).distinct.map { label =>
       s"$label to ${Session.nodes(labelled.collect { case (`label`, to) => to })}"
     }
-    if parts.isEmpty then { "and sent nothing" }
-    else { s"and sent ${Frame.list(parts)}" }
+    if parts.isEmpty then { "" }
+    else { s" and sent ${Frame.list(parts)}" }
+  }
+
+  /** The decisions of the shown step, one line each. */
+  private def decisions: List[String] = eventsAt(cursor).toList.collect {
+    case TraceEvent.Decided(_, node, output) =>
+      s"Node ${node.value} decided: ${alg.inspectOutput.label(output)}."
   }
 
   private def status(w: World[S, M]): String = {
     val here = eventsAt(cursor)
     val handled = here.collectFirst {
-      case TraceEvent.Stepped(_, _, cause, _, _, sent) => s"${describe(cause)} ${sends(sent)}."
+      case TraceEvent.Stepped(_, _, cause, _, _, sent) => s"${describe(cause)}${sends(sent)}."
       case TraceEvent.Rejected(_, node, cause, _)      =>
         s"Node ${node.value} refused this: ${describe(cause)}."
       case TraceEvent.Dropped(_, id) => s"${describe(Choice.Drop(id))}."
     }
-    val decided = here.collect { case TraceEvent.Decided(_, node, output) =>
-      s"Node ${node.value} decided: ${alg.inspectOutput.label(output)}."
-    }
-    (handled.toList ++ decided).mkString(" ") match {
+    handled.getOrElse("") match {
       case "" if cursor == 0 =>
         w.topology.initiators.toList match {
           case Nil        => "No messages yet."
@@ -242,45 +246,58 @@ final case class Session[S, M, A, O](
     }
   }
 
+  /** The envelopes of each queue. Each queue keeps clear of the label cards, of the circles of the
+    * other nodes, of the channel notes and of the envelopes of the queues before it.
+    */
   private def envelopeViews(
       w: World[S, M],
       at: Map[NodeId, Point],
-      cards: List[Box]
+      cards: List[Box],
+      obstacles: List[Box]
   ): (List[EnvelopeView], List[MoreView]) = {
     val next = if live then { nextChoice }
     else { None }
     val sentNow = fresh
-    val drawn = mailboxes(w).flatMap { case (edge, queue) =>
-      at.get(edge.from).zip(at.get(edge.to)).toList.map { case (a, b) =>
-        val labels = queue.map { case (buffered, _) => alg.inspectMsg.label(buffered.env.msg) }
-        val shared = w.topology.edges.contains(Edge(edge.to, edge.from))
-        val spots = Layout.queue(a, b, labels.map(Layout.envelopeWidth), shared, cards)
-        // When the queue does not fit, the last spot shows "+n" for the rest.
-        val fits = spots.size >= queue.size
-        val placed = if fits then { spots.size }
-        else { math.max(0, spots.size - 1) }
-        val views = queue.zip(labels).zip(spots).take(placed).zipWithIndex.toList.map {
-          case ((((buffered, blocked), label), spot), place) =>
-            val id = buffered.env.id
-            EnvelopeView(
-              id,
-              label,
-              alg.inspectMsg.fields(buffered.env.msg),
-              sentMessages.get(id).map(_._1),
-              place,
-              blocked,
-              next.contains(Choice.Deliver(id)),
-              sentNow.contains(id),
-              spot,
-              b
-            )
-        }
-        val more = if fits then { Nil }
-        else { spots.lastOption.toList.map(MoreView(edge.from, edge.to, _, queue.size - placed)) }
-        (views, more)
+    val start = (List.empty[(List[EnvelopeView], List[MoreView])], obstacles)
+    val (drawn, _) = mailboxes(w).foldLeft(start) { case ((done, avoid), (edge, queue)) =>
+      at.get(edge.from).zip(at.get(edge.to)) match {
+        case None         => (done, avoid)
+        case Some((a, b)) =>
+          val chips = queue.map { case (buffered, _) => alg.inspectMsg.chip(buffered.env.msg) }
+          val widths = chips.map(Layout.chipWidth)
+          val shared = w.topology.edges.contains(Edge(edge.to, edge.from))
+          val others = at.collect {
+            case (node, p) if node != edge.from && node != edge.to => Layout.nodeBox(p)
+          }.toList
+          val spots = Layout.queue(a, b, widths, shared, cards, avoid ++ others)
+          // When the queue does not fit, the last spot shows "+n" for the rest.
+          val fits = spots.size >= queue.size
+          val placed = if fits then { spots.size }
+          else { math.max(0, spots.size - 1) }
+          val views = queue.zip(chips).zip(spots).take(placed).zipWithIndex.toList.map {
+            case ((((buffered, blocked), chip), spot), place) =>
+              val id = buffered.env.id
+              EnvelopeView(
+                id,
+                alg.inspectMsg.label(buffered.env.msg),
+                chip,
+                alg.inspectMsg.fields(buffered.env.msg),
+                sentMessages.get(id).map(_._1),
+                place,
+                blocked,
+                next.contains(Choice.Deliver(id)),
+                sentNow.contains(id),
+                spot,
+                b
+              )
+          }
+          val more = if fits then { Nil }
+          else { spots.lastOption.toList.map(MoreView(edge.from, edge.to, _, queue.size - placed)) }
+          val boxes = spots.zip(widths).map { case (p, wd) => Layout.chipBox(p, wd) }.toList
+          ((views, more) :: done, boxes ++ avoid)
       }
     }
-    (drawn.flatMap(_._1), drawn.flatMap(_._2))
+    (drawn.reverse.flatMap(_._1), drawn.reverse.flatMap(_._2))
   }
 
   /** For each node with a `Cut` mark: the step of the first world with the mark. */
@@ -291,36 +308,60 @@ final case class Session[S, M, A, O](
       at: Map[NodeId, Point],
       marks: List[Mark]
   ): List[EdgeView] = {
-    val styles = marks.collect { case Mark.OnEdge(from, to, style) => Set(from, to) -> style }.toMap
+    val styles = marks.collect {
+      case Mark.OnEdge(from, to, style) if style != EdgeStyle.WaitsFor => Set(from, to) -> style
+    }.toMap
+    val waits = marks.collect { case Mark.OnEdge(from, to, EdgeStyle.WaitsFor) => (from, to) }.toSet
+    val records = marks.collect { case Mark.Channel(from, to, record, _) =>
+      Set(from, to) -> record
+    }
+    def record(pair: Set[NodeId]): Option[ChannelRecord] = {
+      val mine = records.collect { case (`pair`, r) => r }
+      if mine.contains(ChannelRecord.Recording) then { Some(ChannelRecord.Recording) }
+      else { mine.headOption }
+    }
     val edges = w.topology.edges
     edges.toList.flatMap { e =>
       val back = edges.contains(Edge(e.to, e.from))
       if back && e.from.value > e.to.value then { Nil }
       else {
-        at.get(e.from).zip(at.get(e.to)).toList.map { case (a, b) =>
-          EdgeView(e.from, e.to, a, b, !back, styles.get(Set(e.from, e.to)))
+        val pair = Set(e.from, e.to)
+        // A wait-for mark in one direction only gives the pair of channels a direction.
+        val (from, to, directed) =
+          if !back then { (e.from, e.to, true) }
+          else if waits(e.from -> e.to) && !waits(e.to -> e.from) then { (e.from, e.to, true) }
+          else if waits(e.to -> e.from) && !waits(e.from -> e.to) then { (e.to, e.from, true) }
+          else { (e.from, e.to, false) }
+        at.get(from).zip(at.get(to)).toList.map { case (a, b) =>
+          EdgeView(from, to, a, b, directed, styles.get(pair), record(pair))
         }
       }
     }
   }
 
-  /** The `Channel` marks as text next to the middle of each channel. */
-  private def noteViews(at: Map[NodeId, Point], marks: List[Mark]): List[NoteView] = {
-    marks.collect { case Mark.Channel(from, to, record, recorded) =>
-      at.get(from).zip(at.get(to)).map { case (a, b) =>
-        val dx = b.x - a.x
-        val dy = b.y - a.y
-        val length = math.max(1.0, math.sqrt(dx * dx + dy * dy))
-        val spot = Point((a.x + b.x) / 2 - dy / length * 14, (a.y + b.y) / 2 + dx / length * 14)
-        val phase = record match {
-          case ChannelRecord.Recording => "recording"
-          case ChannelRecord.Closed    => "closed"
-        }
-        val contents = if recorded.isEmpty then { "empty" }
-        else { recorded.mkString(", ") }
-        NoteView(from, to, spot, s"$phase: $contents")
+  /** The non-empty `Channel` marks as text next to their channels, near the receiver, which records
+    * the channel. Each note takes the free spot that covers the fewest obstacles.
+    */
+  private def noteViews(
+      at: Map[NodeId, Point],
+      marks: List[Mark],
+      obstacles: List[Box]
+  ): List[NoteView] = {
+    val wanted = marks.collect {
+      case Mark.Channel(from, to, _, recorded) if recorded.nonEmpty => (from, to, recorded)
+    }
+    val nodes = at.values.toList.map(Layout.nodeBox)
+    val start = (List.empty[NoteView], obstacles ++ nodes)
+    val (notes, _) = wanted.foldLeft(start) { case ((done, avoid), (from, to, recorded)) =>
+      at.get(from).zip(at.get(to)) match {
+        case None         => (done, avoid)
+        case Some((a, b)) =>
+          val text = recorded.mkString(", ")
+          val spot = Layout.noteSpot(a, b, text, avoid)
+          (NoteView(from, to, spot, text) :: done, Layout.noteBox(spot, text) :: avoid)
       }
-    }.flatten
+    }
+    notes.reverse
   }
 
   def frame(size: Size): Option[Frame] = sim.worlds.lift(cursor).map { w =>
@@ -360,17 +401,21 @@ final case class Session[S, M, A, O](
     }
     val cards =
       nodes.map(n => Layout.labelCard(Layout.labelSpot(n.at, n.side, n.lines.size), n.lines))
-    val (envelopes, more) = envelopeViews(w, points, cards)
+    val notes = noteViews(points, marks, cards)
+    val noteBoxes = notes.map(n => Layout.noteBox(n.at, n.text))
+    val (envelopes, more) = envelopeViews(w, points, cards, noteBoxes)
     Frame(
       plan.box,
       nodes,
       edgeViews(w, points, marks),
       envelopes,
       more,
-      noteViews(points, marks),
+      notes,
       cursor,
       last,
       status(w),
+      decisions,
+      marks.collect { case Mark.Fact(text) => text },
       firstDecision.filter(_ <= cursor),
       finishedAs(Outcome.Quiescent),
       finishedAs(Outcome.StepLimit),

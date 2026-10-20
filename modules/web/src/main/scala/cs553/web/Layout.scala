@@ -2,6 +2,7 @@ package cs553.web
 
 import cs553.core.ids.NodeId
 import cs553.core.topology.Topology
+import cs553.core.trace.Chip
 
 import scala.annotation.tailrec
 
@@ -137,17 +138,68 @@ object Layout {
   /** The approximate width of an envelope with this label. */
   def envelopeWidth(label: String): Double = math.max(34.0, label.length * 6.6 + 14.0)
 
+  /** The size of the diamond of a control message. */
+  val controlSize: Double = 14.0
+
+  /** The approximate width of a message chip. */
+  def chipWidth(chip: Chip): Double = chip match {
+    case Chip.Text(text) => math.max(24.0, text.length * 6.6 + 14.0)
+    case Chip.Red(text)  => math.max(24.0, text.length * 6.6 + 14.0)
+    case Chip.Control    => controlSize
+  }
+
+  /** The box of a chip of width `w` centred at `p`. */
+  def chipBox(p: Point, w: Double): Box =
+    Box(p.x - w / 2, p.y - envelopeHeight / 2, w, envelopeHeight)
+
+  /** The box of a node circle with a small margin. A queue keeps clear of the other nodes. */
+  def nodeBox(p: Point): Box = {
+    val r = nodeRadius + 4
+    Box(p.x - r, p.y - r, 2 * r, 2 * r)
+  }
+
+  /** The approximate box of a channel note whose baseline centre is `at`. */
+  def noteBox(at: Point, text: String): Box = {
+    val w = text.length * 6.2 + 8
+    Box(at.x - w / 2, at.y - 11, w, 15)
+  }
+
+  /** The spot of a note for the channel from `from` to `to`: near the receiver, beside the edge, at
+    * the first place that covers the least of `avoid`.
+    */
+  def noteSpot(from: Point, to: Point, text: String, avoid: List[Box]): Point = {
+    val dx = from.x - to.x
+    val dy = from.y - to.y
+    val length = math.max(1.0, math.sqrt(dx * dx + dy * dy))
+    val (ux, uy) = (dx / length, dy / length)
+    val spots = for {
+      t <- List(0.3, 0.22, 0.4, 0.5, 0.15)
+      side <- List(14.0, -14.0, 24.0, -24.0)
+    } yield Point(
+      round(to.x + ux * length * t - uy * side),
+      round(to.y + uy * length * t + ux * side + 4)
+    )
+    spots.minBy(p => avoid.map(overlap(noteBox(p, text), _)).sum)
+  }
+
   /** The centres of the envelopes of the channel from `from` to `to`, oldest first, on the edge and
     * near the receiver. When the reverse channel `shared` the edge, each queue gets only the half
     * of the edge at its receiver, so the two queues never overlap. Only the envelopes that fit get
     * a centre.
+    *
+    * When that queue covers one of the boxes in `avoid`, or when no envelope fits, the queue looks
+    * for a better place: it slides along the edge, it can move to a lane beside the edge, and on a
+    * shared edge it can use the full edge. It takes the place that covers the least. A box in
+    * `hard` (another node, envelope or note) costs much more than a box in `avoid` (a label card),
+    * and so does the circle of the sender or the receiver.
     */
   def queue(
       from: Point,
       to: Point,
       widths: Vector[Double],
       shared: Boolean,
-      avoid: List[Box] = Nil
+      avoid: List[Box] = Nil,
+      hard: List[Box] = Nil
   ): Vector[Point] = {
     val dx = from.x - to.x
     val dy = from.y - to.y
@@ -163,41 +215,56 @@ object Layout {
       // arrowhead, and it ends at the middle of a shared edge or where the sender circle starts.
       val near = clearance(ux, uy, w0, 12.0)
       val tight = clearance(ux, uy, w0, 3.0)
+      val full = length - nodeRadius - 10.0
       val end = if shared then { length / 2 - 4.0 }
-      else { length - nodeRadius - 10.0 }
-      def spot(along: Double): Point = Point(round(to.x + ux * along), round(to.y + uy * along))
-      def place(start: Double): Vector[Point] = {
+      else { full }
+      def spot(along: Double, lane: Double): Point =
+        Point(round(to.x + ux * along - uy * lane), round(to.y + uy * along + ux * lane))
+      def place(start: Double, lane: Double, stop: Double): Vector[Point] = {
         extents
           .scanLeft(start)((at, e) => at + 2 * e + envelopeGap)
           .zip(extents)
-          .takeWhile { case (at, e) => at + 2 * e <= end }
-          .map { case (at, e) => spot(at + e) }
+          .takeWhile { case (at, e) => at + 2 * e <= stop }
+          .map { case (at, e) => spot(at + e, lane) }
       }
-      def covered(spots: Vector[Point]): Double = spots
-        .zip(widths)
-        .map { case (p, w) =>
-          val card = Box(p.x - w / 2, p.y - envelopeHeight / 2, w, envelopeHeight)
-          avoid.map(overlap(card, _)).sum
-        }
-        .sum
+      def boxes(spots: Vector[Point]): Vector[Box] = spots.zip(widths).map { case (p, w) =>
+        Box(p.x - w / 2, p.y - envelopeHeight / 2, w, envelopeHeight)
+      }
+      // An envelope inside the circle of the sender or the receiver costs as much as a full cover.
+      def inCircle(b: Box, c: Point): Boolean = {
+        val px = math.max(b.x, math.min(c.x, b.x + b.width)) - c.x
+        val py = math.max(b.y, math.min(c.y, b.y + b.height)) - c.y
+        math.sqrt(px * px + py * py) < nodeRadius + 2
+      }
+      def covered(spots: Vector[Point]): Double = boxes(spots).map { box =>
+        val ends = if inCircle(box, to) || inCircle(box, from) then { box.width * box.height }
+        else { 0.0 }
+        avoid.map(overlap(box, _)).sum + 20 * hard.map(overlap(box, _)).sum + 20 * ends
+      }.sum
       val first = extents.headOption.getOrElse(0.0)
-      val normal = place(near)
-      // When the queue covers a label, it slides along the edge to the place that covers the
-      // least, and it may come closer to the receiver than usual.
+      val normal = place(near, 0.0, end)
       val spots =
         if normal.nonEmpty && covered(normal) == 0 then { normal }
         else {
-          val last = math.max(tight, end - 2 * first)
-          val starts = LazyList.iterate(tight)(_ + 2.0).takeWhile(_ <= last).toList
-          starts
-            .map(st => place(st))
-            .filter(_.nonEmpty)
-            .minByOption(sp => (covered(sp), -sp.size))
+          val stops = if shared then { List(end, full) }
+          else { List(end) }
+          val candidates = for {
+            stop <- stops
+            lane <- List(0.0, 14.0, -14.0, 26.0, -26.0)
+            start <- LazyList
+              .iterate(tight)(_ + 3.0)
+              .takeWhile(_ <= math.max(tight, stop - 2 * first))
+              .toList
+            sp = place(start, lane, stop) if sp.nonEmpty
+          } yield (sp, covered(sp), math.abs(lane), stop)
+          candidates
+            .minByOption { case (sp, cover, lane, stop) => (cover, -sp.size, lane, stop) }
+            .map(_._1)
             .getOrElse(normal)
         }
       // A queue never disappears: on a very short edge its first envelope still gets one spot.
       if spots.nonEmpty then { spots }
-      else { extents.headOption.toVector.map(e => spot(near + e)) }
+      else { extents.headOption.toVector.map(e => spot(near + e, 0.0)) }
     }
   }
 

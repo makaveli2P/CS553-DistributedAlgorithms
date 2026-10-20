@@ -223,6 +223,14 @@ final class ChandyLamportSpec extends AnyFunSuite with PropertyBudget with Eithe
 
   private val waiting1 = ClState(Role.NonInitiator, 10, 3, ClPhase.Waiting)
 
+  test("regression: a non-initiator never offers Initiate, and onAction refuses it") {
+    val p = ChandyLamport.protocol
+    assert(!p.actions(node1, waiting1).contains(ClAction.Initiate))
+    assert(p.onAction(node1, waiting1, ClAction.Initiate).isLeft)
+    val initiator = waiting1.copy(role = Role.Initiator)
+    assert(p.actions(node1, initiator).contains(ClAction.Initiate))
+  }
+
   test("regression: a transfer always changes the balance (the college \"Increment\" bug)") {
     val p = ChandyLamport.protocol
     val got = p.onMessage(node1, waiting1, NodeId(0), ClMsg.Transfer(4)).value
@@ -352,7 +360,9 @@ final class ChandyLamportSpec extends AnyFunSuite with PropertyBudget with Eithe
       val states = sim.last.map(_.states).getOrElse(Map.empty)
       val marks = alg.overlay.marks(scala.collection.immutable.SortedMap.from(states))
       assert(marks.collect { case Mark.Cut(n) => n }.sorted == preset.topology.nodes.toList)
-      assert(marks.collect { case Mark.Badge(n, _) => n }.size == preset.topology.nodes.size)
+      // The initiator decided, so no "initiator" badge is left. The label shows the saved balance.
+      assert(marks.collect { case Mark.Badge(n, _) => n }.isEmpty)
+      assert(marks.collect { case Mark.Fact(t) => t }.exists(_.startsWith("snapshot total ")))
       val channels = marks.collect { case Mark.Channel(from, to, record, _) => (from, to, record) }
       assert(channels.size == preset.topology.edges.size)
       assert(channels.forall(_._3 == ChannelRecord.Closed))

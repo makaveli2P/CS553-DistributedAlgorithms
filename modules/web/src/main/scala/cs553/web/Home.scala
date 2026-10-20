@@ -80,13 +80,21 @@ object Home {
   private def picture(t: Thumb): Svg = {
     val r = Thumbnail.nodeRadius.toString
     val edges = t.edges.sortBy(_.tree).map { e =>
+      // A directed edge stops at the rim of the target node, so that the arrowhead shows.
+      val dx = e.b.x - e.a.x
+      val dy = e.b.y - e.a.y
+      val length = math.max(1.0, math.sqrt(dx * dx + dy * dy))
+      val inset = if e.directed then { Thumbnail.nodeRadius + 1.5 }
+      else { 0.0 }
       s.line(
         s.cls("thumb-edge"),
         s.cls("thumb-edge--tree") := e.tree,
         s.x1 := e.a.x.toString,
         s.y1 := e.a.y.toString,
-        s.x2 := e.b.x.toString,
-        s.y2 := e.b.y.toString
+        s.x2 := (e.b.x - dx / length * inset).toString,
+        s.y2 := (e.b.y - dy / length * inset).toString,
+        s.markerEnd := (if e.directed then { "url(#thumb-arrow)" }
+                        else { "" })
       )
     }
     val nodes = t.nodes.map { n =>
@@ -98,7 +106,19 @@ object Home {
         s.r := r
       )
     }
-    frame(t.box, edges ++ nodes)
+    val arrow = s.defs(
+      s.marker(
+        s.idAttr := "thumb-arrow",
+        s.viewBox := "0 0 10 10",
+        s.refX := "10",
+        s.refY := "5",
+        s.markerWidth := "6",
+        s.markerHeight := "6",
+        s.orient := "auto",
+        s.path(s.d := "M 0 1 L 10 5 L 0 9 z", s.cls("thumb-arrowhead"))
+      )
+    )
+    frame(t.box, arrow :: edges ++ nodes)
   }
 
   /** A faint ring of dots for an algorithm that has no run yet. */

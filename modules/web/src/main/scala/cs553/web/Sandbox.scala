@@ -69,6 +69,7 @@ object Sandbox {
                   p(cls("invariant"), role("alert"), line)
                 }),
               child.maybe <-- frame.map(facts),
+              children <-- frame.map(_.decisions.map(line => p(cls("fact"), line))),
               child.maybe <-- frame.map(
                 _.limitAt.map(n => p(cls("fact"), s"Run stopped at the step limit, step $n"))
               ),
@@ -86,7 +87,9 @@ object Sandbox {
     )
   }
 
-  /** One short line with a key for each tick on the slider, or nothing. */
+  /** One short line with a key for each tick on the slider and each fact of the overlay, or
+    * nothing.
+    */
   private def facts(frame: Frame): Option[HtmlElement] = {
     val keys = List(
       frame.decidedAt.map { n =>
@@ -100,7 +103,7 @@ object Sandbox {
           s"quiescent at step $n"
         )
       }
-    ).flatten
+    ).flatten ++ frame.facts.map(text => span(cls("key"), text))
     Option.when(keys.nonEmpty)(p(cls("facts"), keys))
   }
 

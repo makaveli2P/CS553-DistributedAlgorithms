@@ -16,6 +16,7 @@ import cs553.core.topology.Role
 import cs553.core.topology.Topology
 import cs553.core.topology.TopologyError
 import cs553.core.trace.ChannelRecord
+import cs553.core.trace.Chip
 import cs553.core.trace.Inspect
 import cs553.core.trace.Mark
 import cs553.core.trace.NodeFill
@@ -94,7 +95,7 @@ enum ClOutput derives Codec.AsObject {
   case Snapshot(balance: Int, channels: List[RecordedChannel])
 }
 
-/** The Chandy-Lamport snapshot (Fokkink, section 8.1) on a strongly connected directed graph, with
+/** The Chandy-Lamport snapshot (Fokkink, section 3.1) on a strongly connected directed graph, with
   * a bank application. See `docs/algorithms/chandy-lamport.md`.
   */
 object ChandyLamport {
@@ -378,60 +379,70 @@ object ChandyLamport {
 
 object ClState {
 
-  /** The marks of a snapshot: the cut, the saved balance, the record of each incoming channel and
-    * the fill of each initiator that started the snapshot.
+  /** The marks of a snapshot: the cut, the record of each incoming channel, an "initiator" badge
+    * until the initiator decides, the `Chosen` fill of an initiator that decided, and the snapshot
+    * total when each node recorded its channels.
     */
   given Overlay[ClState] = new Overlay[ClState] {
     def marks(states: SortedMap[NodeId, ClState]): List[Mark] = {
-      states.toList.flatMap { case (node, s) =>
+      val perNode = states.toList.flatMap { case (node, s) =>
         val (saved, channels) = s.phase match {
           case ClPhase.Waiting             => (None, Nil)
           case ClPhase.Recording(v, chans) => (Some(v), chans)
           case ClPhase.Recorded(v, chans)  => (Some(v), chans)
         }
-        val chosen =
-          if s.role == Role.Initiator && saved.nonEmpty then {
-            List(Mark.Fill(node, NodeFill.Chosen))
-          } else { Nil }
-        val cut = saved.toList.flatMap(v => List(Mark.Cut(node), Mark.Badge(node, s"saved $v")))
+        val role = (s.role, s.phase) match {
+          case (Role.Initiator, ClPhase.Recorded(_, _)) => List(Mark.Fill(node, NodeFill.Chosen))
+          case (Role.Initiator, _)                      => List(Mark.Badge(node, "initiator"))
+          case (Role.NonInitiator, _)                   => Nil
+        }
+        val cut = saved.toList.map(_ => Mark.Cut(node))
         val records = channels.map {
           case ChannelLog.Open(from, amounts) =>
             Mark.Channel(from, node, ChannelRecord.Recording, amounts.map(_.toString))
           case ChannelLog.Closed(from, amounts) =>
             Mark.Channel(from, node, ChannelRecord.Closed, amounts.map(_.toString))
         }
-        chosen ++ cut ++ records
+        role ++ cut ++ records
       }
+      val totals = states.values.toList.map(_.phase).collect {
+        case ClPhase.Recorded(saved, channels) => saved + channels.flatMap(_.recorded).sum
+      }
+      val total = Option.when(states.nonEmpty && totals.size == states.size) {
+        Mark.Fact(s"snapshot total ${totals.sum}")
+      }
+      perNode ++ total.toList
     }
   }
 
   given Inspect[ClState] = new Inspect[ClState] {
+
+    /** One line for the live balance, and one line for the saved balance after the snapshot. */
     def label(s: ClState): String = s.phase match {
-      case ClPhase.Waiting         => s"balance ${s.balance}"
-      case ClPhase.Recording(_, _) => s"balance ${s.balance}, recording"
-      case ClPhase.Recorded(_, _)  => s"balance ${s.balance}, recorded"
+      case ClPhase.Waiting             => s"balance ${s.balance}"
+      case ClPhase.Recording(saved, _) => s"balance ${s.balance}, saved $saved"
+      case ClPhase.Recorded(saved, _)  => s"balance ${s.balance}, saved $saved"
     }
     def fields(s: ClState): List[(String, String)] = {
-      val base = List("balance" -> s.balance.toString, "budget" -> s.budget.toString)
-      def chans(channels: List[ChannelLog]): String = {
-        channels
-          .map { c =>
-            val state = c match {
-              case ChannelLog.Open(_, _)   => "recording"
-              case ChannelLog.Closed(_, _) => "closed"
-            }
-            s"${c.sender.value}: $state [${c.recorded.mkString(", ")}]"
+      val base = List("balance" -> s.balance.toString, "spends left" -> s.budget.toString)
+      def chans(channels: List[ChannelLog]): List[(String, String)] = {
+        channels.map { c =>
+          val state = c match {
+            case ChannelLog.Open(_, _)   => "recording"
+            case ChannelLog.Closed(_, _) => "closed"
           }
-          .mkString("; ")
+          val contents = if c.recorded.isEmpty then { "empty" }
+          else { c.recorded.mkString(", ") }
+          s"from ${c.sender.value}" -> s"$state, $contents"
+        }
       }
       s.phase match {
         case ClPhase.Waiting                    => ("phase" -> "waiting") :: base
         case ClPhase.Recording(saved, channels) =>
-          List("phase" -> "recording") ++ base ++
-            List("saved" -> saved.toString, "channels" -> chans(channels))
+          List("phase" -> "recording") ++ base ++ List("saved" -> saved.toString) ++
+            chans(channels)
         case ClPhase.Recorded(saved, channels) =>
-          List("phase" -> "recorded") ++ base ++
-            List("saved" -> saved.toString, "channels" -> chans(channels))
+          List("phase" -> "recorded") ++ base ++ List("saved" -> saved.toString) ++ chans(channels)
       }
     }
   }
@@ -446,6 +457,10 @@ object ClMsg {
     def fields(m: ClMsg): List[(String, String)] = m match {
       case ClMsg.Transfer(amount) => List("amount" -> amount.toString)
       case ClMsg.Marker           => Nil
+    }
+    override def chip(m: ClMsg): Chip = m match {
+      case ClMsg.Transfer(amount) => Chip.Text(amount.toString)
+      case ClMsg.Marker           => Chip.Control
     }
   }
 }
@@ -468,7 +483,7 @@ object ClOutput {
   given Inspect[ClOutput] = new Inspect[ClOutput] {
     def label(o: ClOutput): String = o match {
       case ClOutput.Snapshot(balance, channels) =>
-        s"saved balance $balance, in transit ${channels.flatMap(_.amounts).sum}"
+        s"saved $balance, in transit ${channels.flatMap(_.amounts).sum}"
     }
     def fields(o: ClOutput): List[(String, String)] = o match {
       case ClOutput.Snapshot(balance, channels) =>

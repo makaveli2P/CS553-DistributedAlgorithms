@@ -3,6 +3,7 @@ package cs553.web
 import cs553.core.codec.SharedRun
 import cs553.core.ids.AlgorithmId
 import cs553.core.ids.NodeId
+import cs553.core.registry.BrachaTouegEntry
 import cs553.core.registry.Registry
 import cs553.core.rng.Seed
 import cs553.core.trace.Choice
@@ -81,6 +82,45 @@ final class UiSpec extends AnyFunSuite {
       assert(Ui.screen(end).flatMap(_.frame.quiescentAt).nonEmpty, any.name)
       assert(Ui.screen(end).flatMap(_.frame.decidedAt).nonEmpty, any.name)
     }
+  }
+
+  private def area(a: Box, b: Box): Double = {
+    val w = math.min(a.x + a.width, b.x + b.width) - math.max(a.x, b.x)
+    val h = math.min(a.y + a.height, b.y + b.height) - math.max(a.y, b.y)
+    if w > 0 && h > 0 then { w * h }
+    else { 0.0 }
+  }
+
+  test("regression: no envelope covers another envelope, a note or a node that is not its own") {
+    val sizes = List(Size(390, 480), Size(1100, 520))
+    val worst = for {
+      any <- Registry.all
+      s <- session(runToEnd(open(any.id.value), 500)).toList
+      size <- sizes
+      k <- 0 to s.last
+      f <- s.seek(k).frame(size).toList
+    } yield {
+      val chips = f.envelopes.map(e => e -> Layout.chipBox(e.at, Layout.chipWidth(e.chip)))
+      val pairs = chips.combinations(2).toList.collect { case List((_, a), (_, b)) => area(a, b) }
+      val nodes = for {
+        (e, box) <- chips
+        n <- f.nodes if n.id != e.id.from && n.id != e.id.to
+      } yield area(box, Layout.nodeBox(n.at))
+      val notes = for {
+        (_, box) <- chips
+        n <- f.notes
+      } yield area(box, Layout.noteBox(n.at, n.text))
+      (any.name, size.width, k, (pairs ++ nodes ++ notes).maxOption.getOrElse(0.0))
+    }
+    val bad = worst.filter(_._4 > 0)
+    assert(bad.isEmpty, bad.take(10).mkString("; "))
+  }
+
+  test("regression: Bracha-Toueg draws each wait-for edge as an arrow from the waiter") {
+    val end = runToEnd(open("bracha-toueg"), 500)
+    val frame = Ui.screen(end).map(_.frame)
+    assert(frame.exists(f => f.edges.exists(_.directed)))
+    assert(Thumbnail.of(BrachaTouegEntry.algorithm).exists(t => t.edges.exists(_.directed)))
   }
 
   test("a scrub moves only the cursor, and Continue starts a branch with the first k choices") {
@@ -209,6 +249,12 @@ final class UiSpec extends AnyFunSuite {
     assert(later.exists(_.envelopes.exists(!_.fresh)))
   }
 
+  test("regression: a step that sends nothing does not say so, and a decision has its own line") {
+    val end = Ui.screen(runToEnd(open("echo"), 500)).map(_.frame)
+    assert(end.exists(f => !f.status.contains("sent nothing")))
+    assert(end.exists(f => f.decisions.forall(d => !f.status.contains(d))))
+  }
+
   test("regression: the first status names the initiators instead of an empty sentence") {
     assert(
       Ui.screen(open("echo")).map(_.frame.status) == Some(
@@ -231,10 +277,10 @@ final class UiSpec extends AnyFunSuite {
     assert(
       atDecision
         .flatMap(Ui.screen)
-        .exists(_.frame.status.contains("decided: it is the leader (uid 6)."))
+        .exists(_.frame.decisions.exists(_.contains("decided: it is the leader (uid 6).")))
     )
     val allEcho = session(runToEnd(open("echo"), 500)).toList.flatMap { s =>
-      (0 to s.last).map(k => s.seek(k).frame(Layout.defaultSize).map(_.status).getOrElse(""))
+      (0 to s.last).flatMap(k => s.seek(k).frame(Layout.defaultSize).toList.flatMap(_.decisions))
     }
     assert(allEcho.exists(_.contains("Node 1 decided: the wave is complete.")))
     assert(echoEnd.nonEmpty)

@@ -11,8 +11,10 @@ import cs553.core.trace.NodeFill
   */
 final case class ThumbNode(at: Point, chosen: Boolean)
 
-/** One edge of a home thumbnail. `tree` is true when the edge is in the tree of the run. */
-final case class ThumbEdge(a: Point, b: Point, tree: Boolean)
+/** One edge of a home thumbnail. `tree` is true when the edge is in the tree of the run. `directed`
+  * is true when a `WaitsFor` mark gives the edge a direction from `a` to `b`, as on the canvas.
+  */
+final case class ThumbEdge(a: Point, b: Point, tree: Boolean, directed: Boolean)
 
 /** A small static picture of the end of the default run of an algorithm, drawn from the marks of
   * its overlay.
@@ -44,13 +46,21 @@ object Thumbnail {
       val marks = alg.overlay.marks(world.states)
       val chosen = marks.collect { case Mark.Fill(node, NodeFill.Chosen) => node }.toSet
       val tree = marks.collect { case Mark.OnEdge(from, to, EdgeStyle.Tree) => Set(from, to) }.toSet
+      val waits = marks.collect { case Mark.OnEdge(from, to, EdgeStyle.WaitsFor) =>
+        (from, to)
+      }.toSet
       val edges = world.topology.edges.toList
         .filter(e =>
           !world.topology.edges.contains(Edge(e.to, e.from)) || e.from.value < e.to.value
         )
         .flatMap { e =>
-          at.get(e.from).zip(at.get(e.to)).toList.map { case (a, b) =>
-            ThumbEdge(a, b, tree.contains(Set(e.from, e.to)))
+          // The same rule as the canvas: one wait-for direction gives the edge an arrow.
+          val (from, to, directed) =
+            if waits(e.from -> e.to) && !waits(e.to -> e.from) then { (e.from, e.to, true) }
+            else if waits(e.to -> e.from) && !waits(e.from -> e.to) then { (e.to, e.from, true) }
+            else { (e.from, e.to, false) }
+          at.get(from).zip(at.get(to)).toList.map { case (a, b) =>
+            ThumbEdge(a, b, tree.contains(Set(e.from, e.to)), directed)
           }
         }
       val nodes = world.states.keys.toList.flatMap { node =>

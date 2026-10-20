@@ -11,6 +11,7 @@ import cs553.core.topology.NodeAttrs
 import cs553.core.topology.Role
 import cs553.core.topology.Topology
 import cs553.core.trace.ChannelRecord
+import cs553.core.trace.Chip
 import cs553.core.trace.Choice
 import cs553.core.trace.EnvelopeId
 import cs553.core.trace.Inspect
@@ -287,6 +288,20 @@ final class LaiYangSpec
     assert(!p.actions(ctx, done).contains(LyAction.Initiate))
   }
 
+  test("regression: a red spend sends a red transfer and keeps the white sent count") {
+    val ctx = NodeCtx.of(ring2, NodeId(0))
+    val record = LyRecord(LyTrigger.Initiated, 10, SortedMap(NodeId(1) -> 0), SortedMap.empty)
+    val base = p.init(ctx, ring2.attrsOf(NodeId(0))).value
+    val red = base.copy(
+      sentWhite = SortedMap(NodeId(1) -> 2),
+      phase = LyPhase.Recording(record)
+    )
+    val step = p.onAction(ctx, red, LyAction.Spend(NodeId(1), 1)).value
+    assert(step.state.sentWhite == SortedMap(NodeId(1) -> 2))
+    assert(step.sends.map(_.msg) == List(LyMsg.Transfer(1, LyColor.Red)))
+    assert(step.rule == LaiYang.Rules.spendRed)
+  }
+
   test("regression lai-yang-4: a transfer takes from the sender and adds to the receiver") {
     val sim = script(ring2, List(spend(0, 1, 5), deliver(0, 1, 0)))
     assert(stateAt(sim, NodeId(0)).map(_.balance).contains(5))
@@ -401,15 +416,17 @@ final class LaiYangSpec
       }.toSet
       assert(initiated.nonEmpty && initiated.subsetOf(preset.topology.initiators), preset.name)
       nodes.foreach { n =>
-        val expected = if initiated.contains(n) then { NodeFill.Chosen }
-        else { NodeFill.Red }
-        assert(fills.get(n).contains(expected), preset.name)
+        // A node that is done keeps no red fill: only the initiator gets a fill, Chosen.
+        val expected = Option.when(initiated.contains(n))(NodeFill.Chosen)
+        assert(fills.get(n) == expected, preset.name)
       }
       val channels = marks.collect { case Mark.Channel(from, to, record, _) =>
         assert(record == ChannelRecord.Closed)
         Edge(from, to)
       }
       assert(channels.sorted == preset.topology.edges.toList, preset.name)
+      val total = LaiYang.snapshotTotal(states.values).map(t => s"snapshot total $t")
+      assert(total.isDefined && marks.collect { case Mark.Fact(t) => t } == total.toList)
     }
   }
 
@@ -418,9 +435,9 @@ final class LaiYangSpec
     val marks = Overlay[LyState].marks(sim.last.value.states)
     assert(
       marks == List(
+        Mark.Badge(NodeId(0), "initiator"),
         Mark.Fill(NodeId(0), NodeFill.Red),
         Mark.Cut(NodeId(0)),
-        Mark.Badge(NodeId(0), "0 of 1 closed"),
         Mark.Channel(NodeId(1), NodeId(0), ChannelRecord.Recording, Nil),
         Mark.Fill(NodeId(1), NodeFill.White)
       )
@@ -444,19 +461,22 @@ final class LaiYangSpec
   test("Inspect gives labels and fields for the state, the message, the action and the output") {
     assert(Inspect[LyMsg].label(LyMsg.Transfer(5, LyColor.Red)) == "Transfer(5, red)")
     assert(Inspect[LyMsg].label(LyMsg.Control(2)) == "Control(2)")
-    assert(Inspect[LyAction].label(LyAction.Spend(NodeId(3), 5)) == "Spend(5 to 3)")
+    assert(Inspect[LyMsg].chip(LyMsg.Transfer(5, LyColor.Red)) == Chip.Red("5"))
+    assert(Inspect[LyMsg].chip(LyMsg.Transfer(5, LyColor.White)) == Chip.Text("5"))
+    assert(Inspect[LyMsg].chip(LyMsg.Control(2)) == Chip.Control)
+    assert(Inspect[LyAction].label(LyAction.Spend(NodeId(3), 5)) == "Spend 5 to 3")
     assert(Inspect[LyAction].label(LyAction.Initiate) == "Initiate")
     assert(
       Inspect[LyOutput].label(LyOutput.Recorded(10, SortedMap(NodeId(0) -> List(5, 1)))) ==
-        "recorded balance 10, channels 0: 5 + 1"
+        "saved 10, in transit 6"
     )
     val ctx = NodeCtx.of(ring2, NodeId(0))
     val white = p.init(ctx, ring2.attrsOf(NodeId(0))).value
-    assert(Inspect[LyState].label(white) == "white, balance 10")
+    assert(Inspect[LyState].label(white) == "balance 10")
     val record = LyRecord(LyTrigger.Initiated, 10, SortedMap.empty, SortedMap.empty)
     assert(
       Inspect[LyState].label(white.copy(phase = LyPhase.Recording(record))) ==
-        "recording, recorded 10"
+        "balance 10, saved 10"
     )
     assert(Inspect[LyState].fields(white).take(2) == List("phase" -> "white", "color" -> "white"))
   }

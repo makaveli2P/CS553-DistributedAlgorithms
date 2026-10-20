@@ -118,6 +118,7 @@ a.card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .thumb-edge--tree { stroke: var(--done); stroke-width: 3; stroke-linecap: round; }
 .thumb-node { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.5; }
 .thumb-node--chosen { fill: var(--done); stroke: var(--done); }
+.thumb-arrowhead { fill: var(--line-strong); }
 .thumb-dot { fill: none; stroke: var(--line-strong); stroke-width: 1.2; stroke-dasharray: 2 2; }
 
 .card-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 0 2px; }
@@ -163,6 +164,9 @@ a.card:hover .card-name { color: var(--accent); }
 .edge--tree { stroke: var(--done); stroke-width: 3; }
 .edge--used { stroke: var(--muted); stroke-width: 2; }
 .edge--removed { stroke: var(--line); stroke-dasharray: 4 4; }
+/* A snapshot channel: dashed accent while the receiver records it, solid --done when it closed. */
+.edge--recording { stroke: var(--accent); stroke-width: 1.6; stroke-dasharray: 3 3; }
+.edge--closed { stroke: var(--done); stroke-width: 1.6; }
 .channel-note {
   font-size: 11px;
   fill: var(--muted);
@@ -185,13 +189,14 @@ a.card:hover .card-name { color: var(--accent); }
 .node--decided .node-circle { fill: var(--done-soft); stroke: var(--done); }
 .node--chosen .node-circle { fill: var(--done); stroke: var(--done); }
 .node--chosen .node-id { fill: #fff; }
-.node--passive .node-circle { stroke-dasharray: 3 3; }
-.node--passive .node-id { fill: var(--muted); }
+/* One rule for all algorithms: dark --done = decided (Chosen), mint = finished or passive,
+   white = still working. */
+.node--passive .node-circle { fill: var(--done-soft); stroke: var(--done); }
 .node--red .node-circle { fill: var(--red-soft); stroke: var(--red); }
 .node--white .node-circle { fill: var(--surface); }
 .node--free .node-circle { fill: var(--done-soft); stroke: var(--done); }
-.node--deadlocked .node-circle { fill: var(--text); stroke: var(--text); }
-.node--deadlocked .node-id { fill: var(--surface); }
+.node--deadlocked .node-circle { fill: var(--line); stroke: var(--muted); stroke-width: 2; }
+.node--deadlocked .node-id { fill: var(--text); }
 .node-cut { fill: none; stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 2 3; }
 .node--current .node-circle { stroke: var(--accent); stroke-width: 2.5; }
 
@@ -218,6 +223,9 @@ a.card:hover .card-name { color: var(--accent); }
 .envelope--fresh .notch { fill: var(--text); }
 .envelope--next .token { stroke: var(--accent); fill: var(--accent-soft); }
 .envelope--next .notch { fill: var(--accent); }
+.envelope--red .token { fill: var(--red-soft); stroke: var(--red); }
+.envelope--control .token { fill: var(--done); stroke: none; }
+.envelope--control .notch { fill: var(--done); }
 .envelope--blocked { cursor: default; opacity: 0.45; }
 .envelope--blocked:hover .token { stroke: var(--line-strong); }
 .queue-more { font-size: 12px; fill: var(--muted); }
@@ -370,6 +378,7 @@ a.card:hover .card-name { color: var(--accent); }
 .choice-row { display: flex; gap: 18px; }
 .choice { display: flex; align-items: center; gap: 6px; }
 .hint { font-size: 13px; color: var(--muted); margin: 0; }
+.panel p.hint { margin: 0; }
 .settings .field:last-of-type { margin-bottom: 12px; }
 .settings-hint { color: var(--faint); }
 

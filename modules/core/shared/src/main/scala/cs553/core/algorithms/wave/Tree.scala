@@ -270,11 +270,15 @@ object Tree {
 object TreeState {
   given Inspect[TreeState] = new Inspect[TreeState] {
 
-    /** The label names the one neighbour that the node waits for, when it waits for one. */
+    /** A leaf, the number of tokens that a node still waits for, the parent of a node that sent, or
+      * "decider". A collecting node sends as soon as one neighbour is left, so it never waits for
+      * exactly one.
+      */
     def label(s: TreeState): String = s.phase match {
-      case TreePhase.Collecting => s"${s.received.size} of ${s.degree - 1} received"
-      case TreePhase.Sent       => s.parent.fold("sent")(p => s"waits for ${p.value}")
-      case TreePhase.Decided    => s.parent.fold("decided")(p => s"decided with ${p.value}")
+      case TreePhase.Collecting if s.degree <= 1 => "leaf"
+      case TreePhase.Collecting => s"waits for ${s.degree - 1 - s.received.size} more"
+      case TreePhase.Sent       => s.parent.fold("sent")(p => s"sent to ${p.value}")
+      case TreePhase.Decided    => "decider"
     }
     def fields(s: TreeState): List[(String, String)] = {
       val phase = s.phase match {
@@ -294,8 +298,9 @@ object TreeState {
     }
   }
 
-  /** The parent edges, which grow into the tree, and the fill of the two deciders. The two deciders
-    * are parents of each other, so their edge shows once.
+  /** The parent edges, which grow into the tree, the fill of the two deciders and the `Passive`
+    * fill of each node that sent its token. The two deciders are parents of each other, so their
+    * edge shows once.
     */
   given Overlay[TreeState] = new Overlay[TreeState] {
     def marks(states: SortedMap[NodeId, TreeState]): List[Mark] = {
@@ -305,10 +310,11 @@ object TreeState {
         case (child, parent) if !(pairs.contains(parent -> child) && child.value > parent.value) =>
           Mark.treeEdge(child, parent)
       }
-      val deciders = states.toList.collect {
+      val fills = states.toList.collect {
         case (node, s) if s.phase == TreePhase.Decided => Mark.Fill(node, NodeFill.Chosen)
+        case (node, s) if s.phase == TreePhase.Sent    => Mark.Fill(node, NodeFill.Passive)
       }
-      tree ++ deciders
+      tree ++ fills
     }
   }
 }
@@ -334,7 +340,7 @@ object TreeAction {
 object TreeOutput {
   given Inspect[TreeOutput] = new Inspect[TreeOutput] {
     def label(o: TreeOutput): String = o match {
-      case TreeOutput.Decided(partner) => s"decided with ${partner.value}"
+      case TreeOutput.Decided(partner) => s"the partner is node ${partner.value}"
     }
     def fields(o: TreeOutput): List[(String, String)] = o match {
       case TreeOutput.Decided(partner) => List("partner" -> s"node ${partner.value}")

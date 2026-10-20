@@ -108,8 +108,9 @@ object Tarry {
     w.buffered.size + held
   }
 
-  /** The invariant that the web checks at each step: exactly one token exists, no node passes the
-    * token twice on one channel, and a node passes the token to its parent last.
+  /** The invariant that the web checks at each step: exactly one token exists, and a node passes
+    * the token to its parent last. One token also means that no channel carries two tokens, so no
+    * separate check for that exists.
     */
   def invariant(w: World[TarryState, TarryMsg]): Option[String] = {
     val count = tokens(w)
@@ -121,11 +122,7 @@ object Tarry {
           if s.parent.exists(s.sent.contains) && s.sent != w.topology.outNeighbours(node) =>
         s"Node ${node.value} passed the token to its parent before it used each other channel."
     }
-    val twice = w.channels.collectFirst {
-      case (edge, queue) if queue.size > 1 =>
-        s"The channel ${edge.from.value} -> ${edge.to.value} carries ${queue.size} tokens."
-    }
-    oneToken.orElse(parentLast).orElse(twice)
+    oneToken.orElse(parentLast)
   }
 
   /** The channels on which a node in phase `Holding` can pass the token. Rule 1: a node passes the
@@ -373,7 +370,9 @@ object TarryState {
     }
   }
 
-  /** The used channels, the parent edges and the fill of the initiator when it decides. */
+  /** The used channels, the parent edges, the fill of the initiator when it decides, the `Passive`
+    * fill of each node that is done, and one fact for rule 2.
+    */
   given Overlay[TarryState] = new Overlay[TarryState] {
     def marks(states: SortedMap[NodeId, TarryState]): List[Mark] = {
       val used = states.toList.flatMap { case (node, s) =>
@@ -383,11 +382,13 @@ object TarryState {
       val holder = states.toList.collect {
         case (node, s) if s.phase == TarryPhase.Holding => Mark.Badge(node, "token")
       }
-      val decided = states.toList.collect {
+      val fills = states.toList.collect {
         case (node, s) if s.role == Role.Initiator && s.phase == TarryPhase.Decided =>
           Mark.Fill(node, NodeFill.Chosen)
+        case (node, s) if s.phase == TarryPhase.Done => Mark.Fill(node, NodeFill.Passive)
       }
-      used ++ tree ++ holder ++ decided
+      val rule = Option.when(tree.nonEmpty)(Mark.Fact("parent edge is sent last"))
+      used ++ tree ++ holder ++ fills ++ rule.toList
     }
   }
 }

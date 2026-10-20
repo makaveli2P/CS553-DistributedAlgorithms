@@ -1,6 +1,6 @@
 # Chandy-Lamport
 
-Family: snapshot. Variant: Fokkink, *Distributed Algorithms: An Intuitive Approach*, 2nd edition, section 8.1, with a bank application.
+Family: snapshot. Variant: Fokkink, *Distributed Algorithms: An Intuitive Approach*, 2nd edition, section 3.1, with a bank application.
 
 Source: `modules/core/shared/src/main/scala/cs553/core/algorithms/snapshot/ChandyLamport.scala`.
 
@@ -89,9 +89,12 @@ These college bugs cannot happen in the new design:
 
 The overlay gives these marks:
 
-- `Cut(node)` and `Badge(node, "saved B")` for each node that took its snapshot.
-- `Channel(from, node, Recording or Closed, amounts)` for each incoming channel of such a node.
-- `Fill(node, Chosen)` for each initiator that took its snapshot.
+- `Cut(node)` for each node that took its snapshot. The node label shows "balance N", and "saved M" after the snapshot.
+- `Channel(from, node, Recording or Closed, amounts)` for each incoming channel of such a node. The edge style shows the record state: dashed accent while the receiver records, solid when it closed. A note shows the recorded amounts when the list is not empty.
+- `Badge(node, "initiator")` on an initiator until it decides, and `Fill(node, Chosen)` after it decides.
+- `Fact("snapshot total T")` when each node recorded its channels.
+
+The canvas draws a transfer as a chip with the amount and a marker as a small diamond with no text. The tip and the panel show the full message.
 
 ## Example
 

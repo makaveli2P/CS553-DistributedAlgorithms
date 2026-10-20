@@ -1,6 +1,6 @@
 # Bracha-Toueg
 
-Family: deadlock detection. Variant: Fokkink, *Distributed Algorithms*, 2nd edition, the Bracha-Toueg algorithm for N-out-of-M requests.
+Family: deadlock detection. Variant: Fokkink, *Distributed Algorithms*, 2nd edition, section 5.2, the Bracha-Toueg algorithm for N-out-of-M requests.
 
 Code: `modules/core/shared/src/main/scala/cs553/core/algorithms/deadlock/BrachaToueg.scala`. Tests: `BrachaTouegSpec.scala`.
 
@@ -60,9 +60,10 @@ The other presets are the college scenarios, with In from Out: `college-deadlock
 
 ## UI
 
-- Each node shows its notify phase, its grant phase and an "N of M" badge.
+- Each node shows its notify phase, its grant phase and an "N of M" badge. After the decision, a deadlocked node shows "deadlocked" in place of the badge.
+- `OnEdge(waiter, waited, WaitsFor)` for each wait-for edge. The canvas and the Home thumbnail draw it as an arrow from the waiter.
 - The canvas marks the wait-for edges of a free node as removed, and fills the free nodes.
-- After the decision, the canvas fills the deadlocked set. The Home thumbnail fills the same set.
+- After the decision, the canvas fills the deadlocked set with a muted fill, and `Fact("deadlocked: nodes 1 and 3")` names the set. The Home thumbnail fills the same set.
 
 ## Bugs of the college code
 

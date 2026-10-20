@@ -340,13 +340,21 @@ final class BrachaTouegSpec extends AnyFunSuite with PropertyBudget with EitherV
     assert(
       badges == Map(
         0 -> "1 of 2",
-        1 -> "1 of 1",
+        1 -> "deadlocked",
         2 -> "2 of 2",
-        3 -> "1 of 1",
+        3 -> "deadlocked",
         4 -> "0 of 0",
         5 -> "1 of 1"
       )
     )
+    assert(marks.collect { case Mark.Fact(text) => text } == List("deadlocked: nodes 1 and 3"))
+    // Each wait-for edge is one arrow from the waiter, so the canvas can draw who waits for whom.
+    val arrows = marks.collect { case Mark.OnEdge(a, b, EdgeStyle.WaitsFor) => (a.value, b.value) }
+    val edges = preset("mixed-6").edges.toList.map(e => (e.from.value, e.to.value))
+    val waits = finalStates(sim).toList.flatMap { case (node, s) =>
+      s.waitsFor.map(to => (node.value, to.value))
+    }
+    assert(arrows.nonEmpty && arrows.toSet == waits.toSet && waits.toSet.subsetOf(edges.toSet))
   }
 
   test("college-deadlock: the cycle is deadlocked, and no node sends Grant") {

@@ -16,6 +16,7 @@ import cs553.core.topology.NodeAttrs
 import cs553.core.topology.Role
 import cs553.core.topology.Topology
 import cs553.core.topology.TopologyError
+import cs553.core.trace.Chip
 import cs553.core.trace.Inspect
 import cs553.core.trace.Mark
 import cs553.core.trace.NodeFill
@@ -354,10 +355,16 @@ object Franklin {
 
 object FrState {
 
-  /** The leader is `Chosen`, relays are `Passive`, and each candidate shows its round. */
+  /** The leader is `Chosen`, relays are `Passive`, each candidate shows its round, and one fact
+    * gives the number of active nodes in the newest round.
+    */
   given Overlay[FrState] = new Overlay[FrState] {
     def marks(states: SortedMap[NodeId, FrState]): List[Mark] = {
-      states.toList.flatMap {
+      val rounds = states.values.toList.collect { case FrState.Active(_, round, _) => round }
+      val fact = rounds.maxOption.toList.map { top =>
+        Mark.Fact(s"round $top: ${rounds.count(_ == top)} active")
+      }
+      fact ++ states.toList.flatMap {
         case (node, FrState.Announcing(_) | FrState.Leader(_)) =>
           List(Mark.Fill(node, NodeFill.Chosen))
         case (node, FrState.Passive(_) | FrState.Follower(_, _)) =>
@@ -375,7 +382,7 @@ object FrState {
       case FrState.Passive(uid)      => uid.fold("passive")(u => s"passive, uid ${u.value}")
       case FrState.Announcing(uid)   => s"leader (uid ${uid.value}), announcing"
       case FrState.Leader(uid)       => s"leader (uid ${uid.value})"
-      case FrState.Follower(_, _)    => "follower"
+      case FrState.Follower(uid, _)  => uid.fold("follower")(u => s"follower, uid ${u.value}")
     }
     def fields(s: FrState): List[(String, String)] = {
       def own(uid: Option[Uid]): String = uid.fold("none")(_.value.toString)
@@ -403,6 +410,10 @@ object FrMsg {
     def fields(m: FrMsg): List[(String, String)] = m match {
       case FrMsg.Id(uid, round) => List("uid" -> uid.value.toString, "round" -> round.toString)
       case FrMsg.Leader(uid)    => List("uid" -> uid.value.toString)
+    }
+    override def chip(m: FrMsg): Chip = m match {
+      case FrMsg.Id(uid, round) => Chip.Text(s"${uid.value}\u00b7r$round")
+      case FrMsg.Leader(uid)    => Chip.Text(s"Leader(${uid.value})")
     }
   }
 }

@@ -15,6 +15,12 @@ enum EdgeStyle {
 
   /** The algorithm removed the edge: a granted request of Bracha-Toueg. */
   case Removed
+
+  /** The node `from` waits for the node `to`: a wait-for edge of Bracha-Toueg. The canvas draws an
+    * arrow from `from` to `to`. Another style on the same edge sets the stroke, and the arrow
+    * stays.
+    */
+  case WaitsFor
 }
 
 /** The fill of a node. The canvas gives each fill one CSS class. */
@@ -75,6 +81,11 @@ enum Mark {
     * see `Overlay.cutSteps`.
     */
   case Cut(node: NodeId)
+
+  /** One short line of text about the whole world, for example "round 2: 3 active". The UI shows it
+    * in the facts row under the canvas.
+    */
+  case Fact(text: String)
 }
 
 object Mark {

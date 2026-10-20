@@ -54,10 +54,13 @@ The property tests in `LaiYangSpec` check each invariant on random strongly conn
 
 ## Overlay
 
-- `Fill(White)` for a white node and `Fill(Red)` for a red node. An initiator that took its snapshot by `Initiate` and is done gets `Fill(Chosen)`, which the home thumbnail shows.
+- `Fill(White)` for a white node and `Fill(Red)` for a red node that still records. A node that is done gets no red fill: the decided fill shows it, as in Chandy-Lamport. An initiator that took its snapshot by `Initiate` and is done gets `Fill(Chosen)`, which the home thumbnail shows.
+- `Badge(node, "initiator")` on an initiator until it is done.
+- `Fact("snapshot total T")` when each node is done.
 - `Cut(node)` for each red node. The web shows the step of the snapshot.
-- `Badge(node, "k of n closed")` for each red node.
 - `Channel(from, node, Recording or Closed, amounts)` for each in-channel of a red node, with the recorded white transfers.
+
+The node label has the same form as in Chandy-Lamport: "balance N", and "saved M" after the snapshot. The canvas draws a white transfer as a chip with the amount, a red transfer as a chip with the red tint, and a control message as a small diamond. The tip and the panel show the full message. The edge style shows the record state of a channel: dashed accent while the receiver records it, solid when it closed. A note next to the channel shows the recorded amounts when the list is not empty.
 
 ## Presets
 

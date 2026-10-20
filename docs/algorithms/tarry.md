@@ -27,7 +27,7 @@ A non-initiator makes the sender of its first token its parent. The initiator ha
 The tests and `Tarry.invariant` check these invariants:
 
 - Exactly one token exists in each world: the buffered tokens plus the node in phase `Holding`. The initiator holds the token before `Wake` and after its decision.
-- Each channel carries the token exactly once in each direction. The run sends 2|E| messages.
+- Each channel carries the token exactly once in each direction. The run sends 2|E| messages. The tests check this. `Tarry.invariant` does not check it separately, because exactly one token means that no channel can carry two tokens.
 - A node passes the token to its parent last.
 - The parent edges form a spanning tree rooted at the initiator.
 - Only the initiator decides, exactly once, as the last step. At the decision, each node sent and received the token through each of its channels.
@@ -39,7 +39,8 @@ The web shows the invariant line only when it breaks.
 - `Mark.OnEdge(node, to, EdgeStyle.Used)` for each channel that carried the token.
 - `Mark.treeEdge(child, parent)` for each parent edge.
 - `Mark.Badge(node, "token")` on the node that holds the token.
-- `Mark.Fill(initiator, NodeFill.Chosen)` when the initiator decides.
+- `Mark.Fill(initiator, NodeFill.Chosen)` when the initiator decides, and `Mark.Fill(node, NodeFill.Passive)` for each node that is done.
+- `Mark.Fact("parent edge is sent last")` after the first parent edge exists.
 - The node fields show "sent to", "received from" and the line "the parent is the last edge".
 
 ## Presets

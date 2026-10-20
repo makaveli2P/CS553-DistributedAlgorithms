@@ -5,6 +5,8 @@ import com.raquo.laminar.api.L.svg as s
 import com.raquo.laminar.codecs.StringAsIsCodec
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import cs553.core.ids.NodeId
+import cs553.core.trace.ChannelRecord
+import cs553.core.trace.Chip
 import cs553.core.trace.EdgeStyle
 import cs553.core.trace.NodeFill
 import org.scalajs.dom
@@ -106,7 +108,7 @@ object Canvas {
     val line = e.map(ends)
     s.line(
       s.cls("edge"),
-      s.cls <-- e.map(_.style.map(edgeClass).toList),
+      s.cls <-- e.map(v => v.style.map(edgeClass).toList ++ v.record.map(recordClass).toList),
       s.x1 <-- line.map(_._1.toString),
       s.y1 <-- line.map(_._2.toString),
       s.x2 <-- line.map(_._3.toString),
@@ -161,9 +163,16 @@ object Canvas {
 
   /** The CSS class of an edge style. */
   def edgeClass(style: EdgeStyle): String = style match {
-    case EdgeStyle.Tree    => "edge--tree"
-    case EdgeStyle.Used    => "edge--used"
-    case EdgeStyle.Removed => "edge--removed"
+    case EdgeStyle.Tree     => "edge--tree"
+    case EdgeStyle.Used     => "edge--used"
+    case EdgeStyle.Removed  => "edge--removed"
+    case EdgeStyle.WaitsFor => "edge--waits"
+  }
+
+  /** The CSS class of the record state of a snapshot channel. */
+  def recordClass(record: ChannelRecord): String = record match {
+    case ChannelRecord.Recording => "edge--recording"
+    case ChannelRecord.Closed    => "edge--closed"
   }
 
   /** The CSS class of a node fill. */
@@ -303,8 +312,11 @@ object Mailbox {
 
   /** The notch: a small triangle on the side of the envelope that faces the receiver. */
   private def notch(e: EnvelopeView): String = {
-    val w = Layout.envelopeWidth(e.label)
-    val h = Layout.envelopeHeight
+    val w = Layout.chipWidth(e.chip)
+    val h = e.chip match {
+      case Chip.Control               => Layout.controlSize
+      case Chip.Text(_) | Chip.Red(_) => Layout.envelopeHeight
+    }
     val dx = e.toward.x - e.at.x
     val dy = e.toward.y - e.at.y
     val length = math.max(1.0, math.sqrt(dx * dx + dy * dy))
@@ -318,27 +330,48 @@ object Mailbox {
   }
 
   def envelope(e: Signal[EnvelopeView], dispatch: Observer[UiEvent]): Svg = {
-    val h = Layout.envelopeHeight
-    val width = e.map(v => Layout.envelopeWidth(v.label))
+    val chip = e.map(_.chip).distinct
     s.g(
       s.cls("envelope"),
       s.cls("envelope--blocked") <-- e.map(_.blocked.isDefined),
       s.cls("envelope--next") <-- e.map(_.next),
       s.cls("envelope--fresh") <-- e.map(_.fresh),
+      s.cls("envelope--red") <-- chip.map {
+        case Chip.Red(_)                 => true
+        case Chip.Text(_) | Chip.Control => false
+      },
+      s.cls("envelope--control") <-- chip.map(_ == Chip.Control),
       s.transform <-- e.map(v => s"translate(${v.at.x} ${v.at.y})"),
       Canvas.pressable(e.map(_.describe), e.map(event), dispatch),
       s.titleTag(child.text <-- e.map(tip)),
-      child <-- width.distinct.map(hit),
+      child <-- chip.map(c => hit(Layout.chipWidth(c))),
       s.path(s.cls("notch"), s.d <-- e.map(notch)),
+      child <-- chip.map(body)
+    )
+  }
+
+  /** The body of a chip: a card with short text, or a diamond for a control message. */
+  private def body(chip: Chip): Svg = chip match {
+    case Chip.Control =>
+      val d = Layout.controlSize / 2
+      s.path(s.cls("token"), s.d := s"M 0 ${-d} L $d 0 L 0 $d L ${-d} 0 Z")
+    case Chip.Text(text) => card(text)
+    case Chip.Red(text)  => card(text)
+  }
+
+  private def card(text: String): Svg = {
+    val w = Layout.chipWidth(Chip.Text(text))
+    val h = Layout.envelopeHeight
+    s.g(
       s.rect(
         s.cls("token"),
-        s.x <-- width.map(w => (-w / 2).toString),
+        s.x := (-w / 2).toString,
         s.y := (-h / 2).toString,
-        s.width <-- width.map(_.toString),
+        s.width := w.toString,
         s.height := h.toString,
         s.rx := "4"
       ),
-      s.text(s.y := "4", s.textAnchor := "middle", child.text <-- e.map(_.label))
+      s.text(s.y := "4", s.textAnchor := "middle", text)
     )
   }
 

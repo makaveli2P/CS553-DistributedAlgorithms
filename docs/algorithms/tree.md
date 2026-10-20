@@ -52,8 +52,8 @@ The property tests in `TreeSpec` check each invariant on random trees of 2 to 12
 
 ## UI
 
-- The label of a node shows "k of d-1 received" while it collects, "waits for q" after it sends to its parent q, and "decided with q" at the end.
-- The overlay draws each parent edge as a tree edge. The edge between the two deciders shows once. The two deciders get the `Chosen` fill.
+- The label of a node shows "leaf" for a leaf that did not start, "waits for k more" while it collects, "sent to q" after it sends to its parent q, and "decider" at the end. A collecting node sends as soon as one neighbour is left, so it never waits for exactly one.
+- The overlay draws each parent edge as a tree edge. The edge between the two deciders shows once. The two deciders get the `Chosen` fill. A node that sent gets the `Passive` fill.
 
 ## Example
 

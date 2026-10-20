@@ -517,14 +517,15 @@ object BtState {
     }
   }
 
-  /** The "N of M" badge of each node, the removed wait-for edges of each free node, the fill of
-    * each free node and, after the decision, the deadlocked set.
+  /** The wait-for edges as arrows, the "N of M" badge of each node, the removed wait-for edges of
+    * each free node, the fill of each free node and, after the decision, the deadlocked set: a
+    * "deadlocked" badge and fill on each deadlocked node, and one fact that names the set.
     */
   given Overlay[BtState] = new Overlay[BtState] {
     def marks(states: SortedMap[NodeId, BtState]): List[Mark] = {
       val list = states.toList
-      val badges = list.map { case (node, s) =>
-        Mark.Badge(node, s"${s.need} of ${s.waitsFor.size}")
+      val arrows = list.flatMap { case (node, s) =>
+        s.waitsFor.map(Mark.OnEdge(node, _, EdgeStyle.WaitsFor))
       }
       val removed = list.flatMap { case (node, s) =>
         if s.isFree then { s.waitedBy.map(Mark.OnEdge(_, node, EdgeStyle.Removed)) }
@@ -540,11 +541,26 @@ object BtState {
             case (node, s) if !s.isFree && s.notifyPhase != NotifyPhase.Idle => node
           }
         } else { Nil }
+      val badges = list.map { case (node, s) =>
+        if deadlocked.contains(node) then { Mark.Badge(node, "deadlocked") }
+        else { Mark.Badge(node, s"${s.need} of ${s.waitsFor.size}") }
+      }
       // The thumbnail fills the Chosen nodes. The canvas shows the last fill: Deadlocked.
       val verdict = deadlocked.flatMap { node =>
         List(Mark.Fill(node, NodeFill.Chosen), Mark.Fill(node, NodeFill.Deadlocked))
       }
-      badges ++ removed ++ free ++ verdict
+      val fact =
+        if !decided then { Nil }
+        else if deadlocked.isEmpty then { List(Mark.Fact("no node is deadlocked")) }
+        else {
+          val names = deadlocked.map(_.value.toString).reverse match {
+            case last :: Nil  => s"node $last"
+            case last :: rest => s"nodes ${rest.reverse.mkString(", ")} and $last"
+            case Nil          => ""
+          }
+          List(Mark.Fact(s"deadlocked: $names"))
+        }
+      arrows ++ badges ++ removed ++ free ++ verdict ++ fact
     }
   }
 }

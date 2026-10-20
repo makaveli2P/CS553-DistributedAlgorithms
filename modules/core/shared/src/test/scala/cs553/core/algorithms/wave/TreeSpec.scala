@@ -277,6 +277,10 @@ final class TreeSpec extends AnyFunSuite with PropertyBudget with EitherValues {
     val apart =
       world.copy(states = world.states ++ List(NodeId(0) -> decided(1), NodeId(3) -> decided(2)))
     assert(Tree.invariant(apart).exists(_.contains("not each other's parent")))
+    // Node 0 names node 1, but node 1 names node 2: only one half of the mutual-parent rule holds.
+    val oneSided =
+      world.copy(states = world.states ++ List(NodeId(0) -> decided(1), NodeId(1) -> decided(2)))
+    assert(Tree.invariant(oneSided).exists(_.contains("not each other's parent")))
     assert(Tree.invariant(world).isEmpty)
   }
 
@@ -363,7 +367,8 @@ final class TreeSpec extends AnyFunSuite with PropertyBudget with EitherValues {
 
   test("Inspect gives labels and fields for the state, the message, the action and the output") {
     val collecting = TreeState(TreePhase.Collecting, ids(4), None, 3)
-    assert(Inspect[TreeState].label(collecting) == "1 of 2 received")
+    assert(Inspect[TreeState].label(collecting) == "waits for 1 more")
+    assert(Inspect[TreeState].label(TreeState(TreePhase.Collecting, Nil, None, 1)) == "leaf")
     assert(
       Inspect[TreeState].fields(collecting) == List(
         "phase" -> "collecting",
@@ -373,11 +378,11 @@ final class TreeSpec extends AnyFunSuite with PropertyBudget with EitherValues {
       )
     )
     val sent = TreeState(TreePhase.Sent, ids(4, 5), Some(NodeId(6)), 3)
-    assert(Inspect[TreeState].label(sent) == "waits for 6")
+    assert(Inspect[TreeState].label(sent) == "sent to 6")
     val decided = sent.copy(phase = TreePhase.Decided)
-    assert(Inspect[TreeState].label(decided) == "decided with 6")
+    assert(Inspect[TreeState].label(decided) == "decider")
     assert(Inspect[TreeMsg].label(TreeMsg.Token) == "Token")
     assert(Inspect[TreeAction].label(TreeAction.Start) == "Start")
-    assert(Inspect[TreeOutput].label(TreeOutput.Decided(NodeId(6))) == "decided with 6")
+    assert(Inspect[TreeOutput].label(TreeOutput.Decided(NodeId(6))) == "the partner is node 6")
   }
 }
