@@ -193,7 +193,9 @@ object World {
     )
   }
 
-  /** Records the result of one handler: the new state, the sends with fresh ids and the events. */
+  /** Records the result of one handler with `Effects.of`: the new state, the buffered sends and the
+    * events.
+    */
   private def handle[S, M, A, O](
       w: World[S, M],
       ctx: NodeCtx,
@@ -202,35 +204,16 @@ object World {
       result: Either[ProtocolError, Step[S, M, O]]
   ): (World[S, M], List[TraceEvent[S, M, A, O]]) = {
     val step = w.step + 1
-    val at = Stamp(step, clock.local, clock.lamport)
+    val effects = Effects.of(step, ctx, cause, clock, e => w.nextSeq.getOrElse(e, 0), result)
     val ticked = w.copy(step = step, clocks = w.clocks.updated(ctx.self, clock))
-    val checked = result.flatMap { s =>
-      s.sends.find(send => !ctx.out.contains(send.to)) match {
-        case Some(bad) => Left(ProtocolError.NotANeighbour(bad.to))
-        case None      => Right(s)
-      }
+    val sent = effects.sent.foldLeft(ticked) { (world, item) =>
+      val edge = item.env.id.channel
+      world.copy(
+        channels = world.channels.updated(edge, world.channel(edge) :+ item),
+        nextSeq = world.nextSeq.updated(edge, item.env.id.seq + 1)
+      )
     }
-    checked match {
-      case Left(error) => (ticked, List(TraceEvent.Rejected(at, ctx.self, cause, error)))
-      case Right(s)    =>
-        val (sent, envs) = s.sends.foldLeft((ticked, Vector.empty[Envelope[M]])) {
-          case ((world, acc), send) =>
-            val edge = Edge(ctx.self, send.to)
-            val seq = world.nextSeq.getOrElse(edge, 0)
-            val env = Envelope(EnvelopeId(ctx.self, send.to, seq), send.msg)
-            val next = world.copy(
-              channels =
-                world.channels.updated(edge, world.channel(edge) :+ Buffered(env, at.lamport)),
-              nextSeq = world.nextSeq.updated(edge, seq + 1)
-            )
-            (next, acc :+ env)
-        }
-        val after = sent.copy(states = sent.states.updated(ctx.self, s.state))
-        val stepped =
-          TraceEvent.Stepped(at, ctx.self, cause, s.rule, s.state, envs.toList.map(_.id))
-        val sends = envs.toList.map(env => TraceEvent.Sent(at, env))
-        val decided = s.decision.toList.map(o => TraceEvent.Decided(at, ctx.self, o))
-        (after, stepped :: sends ++ decided)
-    }
+    val after = effects.state.fold(sent)(s => sent.copy(states = sent.states.updated(ctx.self, s)))
+    (after, effects.events)
   }
 }
