@@ -5,6 +5,8 @@ import com.raquo.laminar.api.L.svg as s
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import cs553.core.Catalogue
 import cs553.core.Family
+import cs553.core.ids.AlgorithmId
+import cs553.core.lessons.Lessons
 import cs553.core.registry.Algorithm
 import cs553.core.registry.Registry
 import org.scalajs.dom
@@ -66,10 +68,16 @@ object Home {
     )
   }
 
+  /** The first visit opens the lesson of the algorithm. Later visits open the sandbox. */
+  private def entry(id: AlgorithmId): Route = {
+    if Lessons.find(id).isDefined && !Seen.has(id) then { Route.Lesson(id) }
+    else { Route.Open(id) }
+  }
+
   private def card[S, M, A, O](alg: Algorithm[S, M, A, O]): HtmlElement = {
     a(
       cls("card"),
-      href(Route.render(Route.Open(alg.id))),
+      href(Route.render(entry(alg.id))),
       title(alg.summary),
       Thumbnail.of(alg).fold(placeholder)(picture),
       div(cls("card-label"), span(cls("card-name"), alg.name))

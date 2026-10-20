@@ -23,6 +23,12 @@ object Sandbox {
         a(cls("back"), href(Route.render(Route.Home)), "All algorithms"),
         div(
           cls("bar-actions"),
+          child.maybe <-- screen
+            .map(_.lesson)
+            .distinct
+            .map(_.map { route =>
+              a(cls("quiet", "link"), href(Route.render(route)), "Lesson")
+            }),
           button(
             cls("quiet"),
             text <-- screen.map(_.copy).distinct.map {
@@ -43,7 +49,11 @@ object Sandbox {
           cls("workspace"),
           div(
             cls("stage"),
-            Canvas.render(frame, dispatch),
+            viewSwitch(screen.map(_.mode).distinct, dispatch),
+            Canvas
+              .render(frame, dispatch)
+              .amend(cls("canvas--hidden") <-- screen.map(_.mode != ViewMode.Graph).distinct),
+            SpaceTimeView.render(screen.map(_.spaceTime), screen.map(_.mode).distinct, dispatch),
             div(
               cls("controls"),
               child.maybe <-- screen
@@ -84,6 +94,22 @@ object Sandbox {
           )
         )
       )
+    )
+  }
+
+  /** The quiet switch between the two views of the run. */
+  private def viewSwitch(mode: Signal[ViewMode], dispatch: Observer[UiEvent]): HtmlElement = {
+    def choice(wanted: ViewMode, name: String) = button(
+      cls("quiet", "seg"),
+      cls("seg--on") <-- mode.map(_ == wanted),
+      aria.pressed <-- mode.map(m => (m == wanted).toString),
+      name,
+      onClick.mapTo(UiEvent.SetMode(wanted)) --> dispatch
+    )
+    div(
+      cls("view-switch"),
+      choice(ViewMode.Graph, "Graph"),
+      choice(ViewMode.SpaceTime, "Space-time")
     )
   }
 
