@@ -1,5 +1,6 @@
 package cs553.core.golden
 
+import cs553.core.trace.TraceEvent
 import org.scalatest.funsuite.AnyFunSuite
 
 final class GoldenSpec extends AnyFunSuite {
@@ -33,11 +34,16 @@ final class GoldenSpec extends AnyFunSuite {
     assert(stale.isEmpty, s"remove these files or add a case to Goldens: ${stale.mkString(", ")}")
   }
 
-  test("each golden trace has a decision and no Rejected event") {
+  test("each golden trace decodes, has a decision and has no Rejected event") {
     Goldens.cases.foreach { c =>
+      val alg = c.algorithm.algorithm
       committed.get(c.path).foreach { text =>
-        assert(text.contains("\"Decided\""), c.path)
-        assert(!text.contains("\"Rejected\""), c.path)
+        val run = alg.readTrace(text)
+        assert(run.isRight, c.path)
+        run.foreach { r =>
+          assert(r.decisions.nonEmpty, c.path)
+          assert(r.trace.collectFirst { case TraceEvent.Rejected(_, _, _, e) => e }.isEmpty, c.path)
+        }
       }
     }
   }

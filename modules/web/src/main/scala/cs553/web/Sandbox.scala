@@ -3,11 +3,18 @@ package cs553.web
 import com.raquo.laminar.api.L.*
 import org.scalajs.dom
 
-/** The sandbox screen. Its one primary action is "Deliver next". */
+import scala.scalajs.js
+import scala.util.Failure
+import scala.util.Success
+
+/** The sandbox screen. It has one primary action at a time: the seeded next step, "Continue from
+  * step k" on a past step, or "Run again" at the end.
+  */
 object Sandbox {
 
   def render(screen: Signal[Screen], dispatch: Observer[UiEvent]): HtmlElement = {
     val frame = screen.map(_.frame)
+    val panel = screen.map(_.panel).distinct
     div(
       cls("page", "sandbox"),
       headerTag(
@@ -17,24 +24,41 @@ object Sandbox {
           cls("bar-actions"),
           button(
             cls("quiet"),
-            text <-- screen.map(s =>
-              if s.copied then { "Link copied" }
-              else { "Copy link" }
-            ),
-            onClick --> { _ =>
-              dom.window.navigator.clipboard.writeText(dom.window.location.href): Unit
-              dispatch.onNext(UiEvent.Copied)
-            }
+            text <-- screen.map(_.copy).distinct.map {
+              case CopyState.Copied                  => "Link copied"
+              case CopyState.Idle | CopyState.Failed => "Copy link"
+            },
+            onClick --> { _ => copyLink(dispatch) }
           ),
           button(cls("quiet"), "Settings", onClick.mapTo(UiEvent.ToggleSettings) --> dispatch)
         )
       ),
       mainTag(
         h1(text <-- screen.map(_.title)),
+        child.maybe <-- screen.map(_.copy == CopyState.Failed).distinct.map { failed =>
+          Option
+            .when(failed)(p(cls("aside", "copy-hint"), "Copy the address bar to share this run."))
+        },
         div(
           cls("stage"),
+          cls("has-panel") <-- panel.map(_.isDefined),
           Canvas.render(frame, dispatch),
-          Panels.render(screen.map(_.panel).distinct, dispatch)
+          Panels.render(panel, dispatch)
+        ),
+        div(
+          cls("controls"),
+          child.maybe <-- screen
+            .map(_.primary)
+            .distinct
+            .map(_.map { primary =>
+              button(
+                cls("primary"),
+                primary.label,
+                primary.hint.map(title(_)),
+                onClick.mapTo(primary.event) --> dispatch
+              )
+            }),
+          Timeline.render(screen, dispatch)
         ),
         div(
           cls("lines"),
@@ -54,18 +78,26 @@ object Sandbox {
           ),
           child.maybe <-- screen.map(_.branchLine.map(text => p(cls("aside"), text))),
           child.maybe <-- screen.map(_.refused.map(text => p(cls("refused"), text)))
-        ),
-        div(
-          cls("controls"),
-          child.maybe <-- screen
-            .map(_.primary)
-            .distinct
-            .map(_.map { primary =>
-              button(cls("primary"), primary.label, onClick.mapTo(primary.event) --> dispatch)
-            }),
-          Timeline.render(screen, dispatch)
         )
       )
     )
+  }
+
+  /** Copies the URL. The clipboard exists only in a secure context, and the write can fail, so the
+    * screen says "Link copied" only after the write succeeds.
+    */
+  private def copyLink(dispatch: Observer[UiEvent]): Unit = {
+    val navigator = dom.window.navigator
+    val clipboard = navigator.asInstanceOf[js.Dynamic].clipboard
+    if js.isUndefined(clipboard) then { dispatch.onNext(UiEvent.CopyFailed) }
+    else {
+      navigator.clipboard
+        .writeText(dom.window.location.href)
+        .toFuture
+        .onComplete {
+          case Success(_) => dispatch.onNext(UiEvent.Copied)
+          case Failure(_) => dispatch.onNext(UiEvent.CopyFailed)
+        }(using scala.scalajs.concurrent.JSExecutionContext.queue)
+    }
   }
 }

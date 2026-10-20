@@ -308,24 +308,28 @@ object CrState {
   given Overlay[CrState] = Overlay.none
 
   given Inspect[CrState] = new Inspect[CrState] {
+
+    /** The label has one or two parts. The UI shows each part on its own line. The node id is not
+      * in the label, so the label names the uid.
+      */
     def label(s: CrState): String = s match {
-      case CrState.Asleep(uid)         => s"asleep ${uid.value}"
-      case CrState.Active(uid)         => s"active ${uid.value}"
-      case CrState.Passive(_)          => "passive"
-      case CrState.Announcing(uid)     => s"leader ${uid.value}, announcing"
-      case CrState.Leader(uid)         => s"leader ${uid.value}"
-      case CrState.Follower(_, leader) => s"knows leader ${leader.value}"
+      case CrState.Asleep(uid)         => s"asleep, uid ${uid.value}"
+      case CrState.Active(uid)         => s"active, uid ${uid.value}"
+      case CrState.Passive(uid)        => uid.fold("passive")(u => s"passive, uid ${u.value}")
+      case CrState.Announcing(uid)     => s"leader (uid ${uid.value}), announcing"
+      case CrState.Leader(uid)         => s"leader (uid ${uid.value})"
+      case CrState.Follower(_, leader) => s"follower, leader is uid ${leader.value}"
     }
     def fields(s: CrState): List[(String, String)] = {
       def own(uid: Option[Uid]): String = uid.fold("none")(_.value.toString)
       s match {
-        case CrState.Asleep(uid)     => List("phase" -> "Asleep", "uid" -> uid.value.toString)
-        case CrState.Active(uid)     => List("phase" -> "Active", "uid" -> uid.value.toString)
-        case CrState.Passive(uid)    => List("phase" -> "Passive", "uid" -> own(uid))
-        case CrState.Announcing(uid) => List("phase" -> "Announcing", "uid" -> uid.value.toString)
-        case CrState.Leader(uid)     => List("phase" -> "Leader", "uid" -> uid.value.toString)
+        case CrState.Asleep(uid)     => List("phase" -> "asleep", "uid" -> uid.value.toString)
+        case CrState.Active(uid)     => List("phase" -> "active", "uid" -> uid.value.toString)
+        case CrState.Passive(uid)    => List("phase" -> "passive", "uid" -> own(uid))
+        case CrState.Announcing(uid) => List("phase" -> "announcing", "uid" -> uid.value.toString)
+        case CrState.Leader(uid)     => List("phase" -> "leader", "uid" -> uid.value.toString)
         case CrState.Follower(uid, leader) =>
-          List("phase" -> "Follower", "uid" -> own(uid), "leader" -> leader.value.toString)
+          List("phase" -> "follower", "uid" -> own(uid), "leader" -> s"uid ${leader.value}")
       }
     }
   }
@@ -356,8 +360,8 @@ object CrAction {
 object CrOutput {
   given Inspect[CrOutput] = new Inspect[CrOutput] {
     def label(o: CrOutput): String = o match {
-      case CrOutput.Elected(uid)    => s"Elected(${uid.value})"
-      case CrOutput.Follows(leader) => s"Follows(${leader.value})"
+      case CrOutput.Elected(uid)    => s"it is the leader (uid ${uid.value})"
+      case CrOutput.Follows(leader) => s"the leader is uid ${leader.value}"
     }
     def fields(o: CrOutput): List[(String, String)] = o match {
       case CrOutput.Elected(uid)    => List("uid" -> uid.value.toString)

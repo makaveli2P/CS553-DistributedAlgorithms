@@ -90,7 +90,7 @@ final class CliSpec extends AnyFunSuite with EitherValues {
     assert(report.text.contains("note: node 0 has no edges, so the run omits it"))
     assert(report.text.exists(_.contains("[decide]")))
     assert(report.text.contains("finished: Quiescent after 15 steps, 14 messages"))
-    assert(report.text.contains("decisions: node 1 WaveComplete"))
+    assert(report.text.contains("decisions: node 1: the wave is complete"))
     val run = RunJson.read[EchoState, EchoMsg, EchoAction, EchoOutput](report.json).value
     assert(run.outcome.contains(Outcome.Quiescent))
     assert(run.decisions.map(_._1).toList == List(NodeId(1)))
@@ -100,8 +100,8 @@ final class CliSpec extends AnyFunSuite with EitherValues {
     val args = simulate("simulate --alg chang-roberts --ring 6 --seed 7")
     val report = Simulate.run(args, None).value
     assert(report.text.exists(_.startsWith("nodes: 0(uid ")))
-    assert(report.text.count(_.contains("DECIDES Elected(")) == 1)
-    assert(report.text.count(_.contains("DECIDES Follows(")) == 5)
+    assert(report.text.count(_.contains("DECIDES: it is the leader")) == 1)
+    assert(report.text.count(_.contains("DECIDES: the leader is uid")) == 5)
     assert(report.text.exists(_.startsWith("finished: Quiescent")))
     assert(Simulate.run(args, None) == Simulate.run(args, None))
   }

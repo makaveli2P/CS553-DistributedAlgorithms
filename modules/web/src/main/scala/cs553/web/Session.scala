@@ -14,6 +14,7 @@ import cs553.core.trace.Outcome
 import cs553.core.trace.Policy
 import cs553.core.trace.RunSpec
 import cs553.core.trace.TraceEvent
+import cs553.core.world.Buffered
 import cs553.core.world.ChoiceError
 import cs553.core.world.RunError
 import cs553.core.world.Simulation
@@ -41,13 +42,15 @@ final case class Session[S, M, A, O](
 
   def finished: Boolean = sim.run.outcome.isDefined
 
-  /** The seed that picks "Deliver next". */
+  /** The seed that picks "Deliver next". `Session.start` and `Session.fromLink` refuse a spec with
+    * a `Script` policy, so the second case does not occur.
+    */
   def seed: Seed = spec.policy match {
     case Policy.Seeded(seed) => seed
     case Policy.Script(_)    => Algorithm.defaultSeed
   }
 
-  def link: String = alg.encodeLink(SharedRun(spec, sim.choices))
+  lazy val link: String = alg.encodeLink(SharedRun(spec, sim.choices))
 
   def presetName: Option[String] = alg.presets.find(_.topology == spec.topology).map(_.name)
 
@@ -138,21 +141,25 @@ final case class Session[S, M, A, O](
 
   private def events: Vector[TraceEvent[S, M, A, O]] = sim.run.trace
 
-  private def stepOf(e: TraceEvent[S, M, A, O]): Int = e match {
-    case TraceEvent.Started(_, _, _)           => 0
-    case TraceEvent.Sent(at, _)                => at.step
-    case TraceEvent.Stepped(at, _, _, _, _, _) => at.step
-    case TraceEvent.Rejected(at, _, _, _)      => at.step
-    case TraceEvent.Dropped(at, _)             => at.step
-    case TraceEvent.Decided(at, _, _)          => at.step
-    case TraceEvent.Finished(at, _)            => at.step
-  }
+  // Session is immutable, so each index is computed at most once for each session value.
+  private lazy val byStep: Map[Int, Vector[TraceEvent[S, M, A, O]]] = events.groupBy(Session.stepOf)
 
-  private def shown: Vector[TraceEvent[S, M, A, O]] = events.filter(e => stepOf(e) <= cursor)
-
-  private def sentMessages: Map[EnvelopeId, (Int, M)] = events.collect {
+  private lazy val sentMessages: Map[EnvelopeId, (Int, M)] = events.collect {
     case TraceEvent.Sent(at, env) => env.id -> (at.step, env.msg)
   }.toMap
+
+  private lazy val firstDecision: Option[Int] = events.collectFirst {
+    case TraceEvent.Decided(at, _, _) => at.step
+  }
+
+  private lazy val finish: Option[(Int, Outcome)] = events.collectFirst {
+    case TraceEvent.Finished(at, outcome) => (at.step, outcome)
+  }
+
+  private def eventsAt(step: Int): Vector[TraceEvent[S, M, A, O]] =
+    byStep.getOrElse(step, Vector.empty)
+
+  private def shown: Vector[TraceEvent[S, M, A, O]] = (0 to cursor).toVector.flatMap(eventsAt)
 
   private def msgLabel(id: EnvelopeId): String = {
     sentMessages.get(id).fold("a message") { case (_, m) => alg.inspectMsg.label(m) }
@@ -162,68 +169,119 @@ final case class Session[S, M, A, O](
 
   private def describe(choice: Choice[A]): String = choice match {
     case Choice.Deliver(id) =>
-      s"Node ${id.to.value} handled ${msgLabel(id)} from node ${id.from.value}."
-    case Choice.Fire(node, action) => s"Node ${node.value} did ${actionLabel(action)}."
-    case Choice.Drop(id)           => s"${msgLabel(id)} from node ${id.from.value} was lost."
+      s"Node ${id.to.value} handled ${msgLabel(id)} from node ${id.from.value}"
+    case Choice.Fire(node, action) => s"Node ${node.value} ran ${actionLabel(action)}"
+    case Choice.Drop(id)           => s"${msgLabel(id)} from node ${id.from.value} was lost"
   }
 
-  private def status: String = {
-    val here = events.filter(e => stepOf(e) == cursor)
+  /** "and sent Token to nodes 3, 4 and 5" or "and sent nothing", from the ids of one step. */
+  private def sends(sent: List[EnvelopeId]): String = {
+    val labelled = sent.map(id => msgLabel(id) -> id.to)
+    val parts = labelled.map(_._1).distinct.map { label =>
+      s"$label to ${Session.nodes(labelled.collect { case (`label`, to) => to })}"
+    }
+    if parts.isEmpty then { "and sent nothing" }
+    else { s"and sent ${Frame.list(parts)}" }
+  }
+
+  private def status(w: World[S, M]): String = {
+    val here = eventsAt(cursor)
     val handled = here.collectFirst {
-      case TraceEvent.Stepped(_, _, cause, _, _, _) => describe(cause)
-      case TraceEvent.Rejected(_, node, cause, _)   =>
-        s"Node ${node.value} refused: ${describe(cause).stripSuffix(".")}."
-      case TraceEvent.Dropped(_, id) => describe(Choice.Drop(id))
+      case TraceEvent.Stepped(_, _, cause, _, _, sent) => s"${describe(cause)} ${sends(sent)}."
+      case TraceEvent.Rejected(_, node, cause, _)      =>
+        s"Node ${node.value} refused this: ${describe(cause)}."
+      case TraceEvent.Dropped(_, id) => s"${describe(Choice.Drop(id))}."
     }
     val decided = here.collect { case TraceEvent.Decided(_, node, output) =>
-      s"Node ${node.value} decided ${alg.inspectOutput.label(output)}."
+      s"Node ${node.value} decided: ${alg.inspectOutput.label(output)}."
     }
     (handled.toList ++ decided).mkString(" ") match {
-      case "" if cursor == 0 => "Nothing has happened yet."
-      case ""                => ""
-      case text              => text
+      case "" if cursor == 0 =>
+        w.topology.initiators.toList match {
+          case Nil        => "No messages yet."
+          case one :: Nil => s"Node ${one.value} is the initiator. No messages yet."
+          case initiators =>
+            s"Nodes ${Frame.list(initiators.map(_.value.toString))} are initiators. No messages yet."
+        }
+      case ""   => ""
+      case text => text
     }
   }
 
-  private def current: Option[NodeId] = events.filter(e => stepOf(e) == cursor).collectFirst {
+  private def current: Option[NodeId] = eventsAt(cursor).collectFirst {
     case TraceEvent.Stepped(_, node, _, _, _, _) => node
     case TraceEvent.Rejected(_, node, _, _)      => node
   }
+
+  /** The envelopes that the shown step sent. */
+  private def fresh: Set[EnvelopeId] = eventsAt(cursor)
+    .collect { case TraceEvent.Stepped(_, _, _, _, _, sent) =>
+      sent
+    }
+    .flatten
+    .toSet
 
   private def decidedNodes: Map[NodeId, O] = shown.collect {
     case TraceEvent.Decided(_, node, output) => node -> output
   }.toMap
 
-  private def envelopeViews(w: World[S, M]): List[ChannelView] = {
+  /** Each channel of `w` with its queue, oldest first, and the reason that each envelope waits. */
+  private def mailboxes(w: World[S, M]): List[(Edge, Vector[(Buffered[M], Option[Blocked])])] = {
     val enabled = World.enabled(alg.protocol, w).collect { case Choice.Deliver(id) => id }.toSet
-    val next = if live then { nextChoice }
-    else { None }
     w.channels.toList.map { case (edge, queue) =>
       val head = queue.headOption.map(b => alg.inspectMsg.label(b.env.msg))
-      ChannelView(
-        edge.from,
-        edge.to,
-        w.topology.edges.contains(Edge(edge.to, edge.from)),
-        queue.map { b =>
-          val id = b.env.id
-          val blocked =
-            if !live then { Some(Blocked.Past) }
-            else if enabled.contains(id) then { None }
-            else { Some(Blocked.Behind(head.getOrElse(""))) }
-          EnvelopeView(
-            id,
-            alg.inspectMsg.label(b.env.msg),
-            alg.inspectMsg.fields(b.env.msg),
-            sentMessages.get(id).map(_._1),
-            blocked,
-            next.contains(Choice.Deliver(id))
-          )
-        }
-      )
+      edge -> queue.map { b =>
+        val blocked =
+          if !live then { Some(Blocked.Past) }
+          else if enabled.contains(b.env.id) then { None }
+          else { head.map(Blocked.Behind(_)) }
+        b -> blocked
+      }
     }
   }
 
-  private def edgeViews(w: World[S, M]): List[EdgeView] = {
+  private def envelopeViews(
+      w: World[S, M],
+      at: Map[NodeId, Point],
+      cards: List[Box]
+  ): (List[EnvelopeView], List[MoreView]) = {
+    val next = if live then { nextChoice }
+    else { None }
+    val sentNow = fresh
+    val drawn = mailboxes(w).flatMap { case (edge, queue) =>
+      at.get(edge.from).zip(at.get(edge.to)).toList.map { case (a, b) =>
+        val labels = queue.map { case (buffered, _) => alg.inspectMsg.label(buffered.env.msg) }
+        val shared = w.topology.edges.contains(Edge(edge.to, edge.from))
+        val spots = Layout.queue(a, b, labels.map(Layout.envelopeWidth), shared, cards)
+        // When the queue does not fit, the last spot shows "+n" for the rest.
+        val fits = spots.size >= queue.size
+        val placed = if fits then { spots.size }
+        else { math.max(0, spots.size - 1) }
+        val views = queue.zip(labels).zip(spots).take(placed).zipWithIndex.toList.map {
+          case ((((buffered, blocked), label), spot), place) =>
+            val id = buffered.env.id
+            EnvelopeView(
+              id,
+              label,
+              alg.inspectMsg.fields(buffered.env.msg),
+              sentMessages.get(id).map(_._1),
+              place,
+              blocked,
+              next.contains(Choice.Deliver(id)),
+              sentNow.contains(id),
+              spot,
+              b
+            )
+        }
+        val more = if fits then { Nil }
+        else { spots.lastOption.toList.map(MoreView(edge.from, edge.to, _, queue.size - placed)) }
+        (views, more)
+      }
+    }
+    (drawn.flatMap(_._1), drawn.flatMap(_._2))
+  }
+
+  private def edgeViews(w: World[S, M], at: Map[NodeId, Point]): List[EdgeView] = {
     val tree = alg.overlay
       .marks(w.states)
       .collect { case Mark.TreeEdge(child, parent) =>
@@ -234,44 +292,55 @@ final case class Session[S, M, A, O](
     edges.toList.flatMap { e =>
       val back = edges.contains(Edge(e.to, e.from))
       if back && e.from.value > e.to.value then { Nil }
-      else { List(EdgeView(e.from, e.to, !back, tree.contains(Set(e.from, e.to)))) }
+      else {
+        at.get(e.from).zip(at.get(e.to)).toList.map { case (a, b) =>
+          EdgeView(e.from, e.to, a, b, !back, tree.contains(Set(e.from, e.to)))
+        }
+      }
     }
   }
 
-  def frame: Option[Frame] = sim.worlds.lift(cursor).map { w =>
-    val points = Layout.positions(w.topology)
+  def frame(size: Size): Option[Frame] = sim.worlds.lift(cursor).map { w =>
+    val plan = Layout.plan(w.topology, size)
+    val points = plan.positions
     val active = current
     val decided = decidedNodes
+    val next = if live then { nextChoice }
+    else { None }
     val nodes = w.states.toList.map { case (node, state) =>
       val actions = if live then {
         w.ctxs.get(node).toList.flatMap { ctx =>
           alg.protocol.actions(ctx, state).zipWithIndex.map { case (a, i) =>
-            ActionView(i, alg.inspectAction.label(a))
+            ActionView(i, actionLabel(a), next.contains(Choice.Fire(node, a)))
           }
         }
       } else { Nil }
+      val at = points.getOrElse(node, Point(0, 0))
       NodeView(
         node,
-        points.getOrElse(node, Point(0, 0)),
-        alg.inspectState.label(state),
+        at,
+        plan.side(at),
+        alg.inspectState.label(state).split(", ").toList,
         active.contains(node),
         decided.contains(node),
         actions
       )
     }
-    val firstDecision = events.collectFirst { case TraceEvent.Decided(at, _, _) => at.step }
-    val finish = events.collectFirst { case TraceEvent.Finished(at, outcome) => (at.step, outcome) }
     def finishedAs(want: Outcome): Option[Int] = finish.collect {
       case (step, outcome) if outcome == want && step <= cursor => step
     }
+    val cards =
+      nodes.map(n => Layout.labelCard(Layout.labelSpot(n.at, n.side, n.lines.size), n.lines))
+    val (envelopes, more) = envelopeViews(w, points, cards)
     Frame(
-      Layout.box(points.values),
+      plan.box,
       nodes,
-      edgeViews(w),
-      envelopeViews(w),
+      edgeViews(w, points),
+      envelopes,
+      more,
       cursor,
       last,
-      status,
+      status(w),
       firstDecision.filter(_ <= cursor),
       finishedAs(Outcome.Quiescent),
       finishedAs(Outcome.StepLimit)
@@ -279,18 +348,29 @@ final case class Session[S, M, A, O](
   }
 
   def nodePanel(node: NodeId): Option[PanelView] = {
-    sim.worlds.lift(cursor).flatMap(_.states.get(node)).map { state =>
+    sim.worlds.lift(cursor).flatMap(w => w.states.get(node).map(w -> _)).map { case (w, state) =>
       val mine = shown.collect { case TraceEvent.Stepped(at, `node`, cause, rule, _, _) =>
         (at.step, cause, rule.value)
       }
       val lastMessage = mine.reverse.collectFirst { case (step, Choice.Deliver(id), _) =>
-        s"${msgLabel(id)} from node ${id.from.value} at step $step"
+        s"${msgLabel(id)} from node ${id.from.value}, step $step"
       }
-      val lastRule = mine.lastOption.map { case (step, _, rule) => s"$rule at step $step" }
+      val lastRule = mine.lastOption.map { case (step, _, rule) => s"$rule, step $step" }
+      val waiting =
+        mailboxes(w).collect { case (edge, queue) if edge.to == node => queue }.flatMap { queue =>
+          queue.toList.map { case (buffered, blocked) =>
+            val text =
+              s"${alg.inspectMsg.label(buffered.env.msg)} from node ${buffered.env.id.from.value}"
+            blocked match {
+              case Some(Blocked.Behind(_))   => s"$text (behind the first)"
+              case Some(Blocked.Past) | None => text
+            }
+          }
+        }
       PanelView.NodeInfo(
         node,
-        alg.inspectState.label(state),
         alg.inspectState.fields(state),
+        waiting,
         lastMessage,
         lastRule,
         decidedNodes.get(node).map(alg.inspectOutput.label)
@@ -298,10 +378,8 @@ final case class Session[S, M, A, O](
     }
   }
 
-  def envelopePanel(id: EnvelopeId): Option[PanelView] = {
-    frame.flatMap(_.channels.flatMap(_.queue).find(_.id == id)).map { env =>
-      PanelView.EnvelopeInfo(env, id.from, id.to, env.blocked.isEmpty)
-    }
+  def envelopePanel(frame: Frame, id: EnvelopeId): Option[PanelView] = {
+    frame.envelopes.find(_.id == id).map(env => PanelView.EnvelopeInfo(env, env.blocked.isEmpty))
   }
 
   def settings: SettingsView = {
@@ -311,24 +389,31 @@ final case class Session[S, M, A, O](
       case OrderPolicy.Default(_) => None
     }
     SettingsView(
-      alg.presets.map(_.name),
+      alg.presets.map(p => PresetChoice(p.name, p.title)),
       presetName,
       seed.value,
-      spec.order == ChannelOrder.Fifo,
+      spec.order,
       lock
     )
   }
 
   /** The one primary action: a seeded step, a branch from a past step, or a new run at the end. */
   def primary: Option[Primary] = {
-    if !live then { Some(Primary(s"Continue from step $cursor", UiEvent.ContinueHere)) }
-    else {
+    if !live then {
+      Some(
+        Primary(
+          s"Continue from step $cursor",
+          UiEvent.ContinueHere,
+          Some("Deliver next then repeats this run. Click an envelope to take another path.")
+        )
+      )
+    } else {
       nextChoice match {
         case Some(Choice.Deliver(_)) | Some(Choice.Drop(_)) =>
-          Some(Primary("Deliver next", UiEvent.Forward))
+          Some(Primary("Deliver next", UiEvent.Forward, None))
         case Some(Choice.Fire(node, action)) =>
-          Some(Primary(s"${actionLabel(action)} node ${node.value}", UiEvent.Forward))
-        case None => Some(Primary("Run again", UiEvent.Restart))
+          Some(Primary(s"${actionLabel(action)} node ${node.value}", UiEvent.Forward, None))
+        case None => Some(Primary("Run again", UiEvent.Restart, None))
       }
     }
   }
@@ -340,14 +425,38 @@ final case class Session[S, M, A, O](
 
 object Session {
 
+  def stepOf[S, M, A, O](e: TraceEvent[S, M, A, O]): Int = e match {
+    case TraceEvent.Started(_, _, _)           => 0
+    case TraceEvent.Sent(at, _)                => at.step
+    case TraceEvent.Stepped(at, _, _, _, _, _) => at.step
+    case TraceEvent.Rejected(at, _, _, _)      => at.step
+    case TraceEvent.Dropped(at, _)             => at.step
+    case TraceEvent.Decided(at, _, _)          => at.step
+    case TraceEvent.Finished(at, _)            => at.step
+  }
+
+  /** "node 3" or "nodes 3, 4 and 5". */
+  def nodes(ids: List[NodeId]): String = ids match {
+    case one :: Nil => s"node ${one.value}"
+    case many       => s"nodes ${Frame.list(many.map(_.value.toString))}"
+  }
+
+  /** The web runs only seeded specs: "Deliver next" needs a seed. */
+  private def seededOnly[A](spec: RunSpec[A]): Either[String, RunSpec[A]] = spec.policy match {
+    case Policy.Seeded(_) => Right(spec)
+    case Policy.Script(_) => Left("This link holds a scripted run, which the browser cannot open.")
+  }
+
   /** A new run of `spec` at step 0. */
   def start[S, M, A, O](
       alg: Algorithm[S, M, A, O],
       spec: RunSpec[A]
   ): Either[String, Session[S, M, A, O]] = {
-    Simulator.start(alg.protocol, spec) match {
-      case Left(error) => Left(render(error))
-      case Right(sim)  => Right(Session(alg, spec, sim, 0, None, None))
+    seededOnly(spec).flatMap { seeded =>
+      Simulator.start(alg.protocol, seeded) match {
+        case Left(error) => Left(render(error))
+        case Right(sim)  => Right(Session(alg, seeded, sim, 0, None, None))
+      }
     }
   }
 
@@ -363,6 +472,7 @@ object Session {
   ): Either[String, Session[S, M, A, O]] = {
     for {
       shared <- alg.decodeLink(link).left.map(_.toList.map(_.render).mkString("; "))
+      _ <- seededOnly(shared.spec)
       sim <- alg.replay(shared).left.map(render)
     } yield {
       val last = sim.worlds.size - 1

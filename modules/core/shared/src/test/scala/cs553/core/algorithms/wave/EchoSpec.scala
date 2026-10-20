@@ -310,19 +310,23 @@ final class EchoSpec extends AnyFunSuite with PropertyBudget with EitherValues {
 
   test("Inspect gives labels and fields for the state, the message, the action and the output") {
     val state = EchoState(Role.NonInitiator, EchoPhase.Waiting, Some(NodeId(3)), 2, 3)
-    assert(Inspect[EchoState].label(state) == "waiting, received 2 of 3")
+    assert(Inspect[EchoState].label(state) == "waiting, 2 of 3 received")
     assert(
       Inspect[EchoState].fields(state) ==
         List(
-          "role" -> "NonInitiator",
-          "phase" -> "Waiting",
-          "parent" -> "3",
-          "received" -> "2",
-          "expected" -> "3"
+          "role" -> "not an initiator",
+          "phase" -> "waiting",
+          "parent" -> "node 3",
+          "received" -> "2 of 3"
         )
+    )
+    val idle = EchoState(Role.Initiator, EchoPhase.Idle, None, 0, 2)
+    assert(Inspect[EchoState].label(idle) == "idle")
+    assert(
+      Inspect[EchoState].fields(idle).take(3).map(_._2) == List("initiator", "idle", "none yet")
     )
     assert(Inspect[EchoMsg].label(EchoMsg.Token) == "Token")
     assert(Inspect[EchoAction].label(EchoAction.Wake) == "Wake")
-    assert(Inspect[EchoOutput].label(EchoOutput.WaveComplete) == "WaveComplete")
+    assert(Inspect[EchoOutput].label(EchoOutput.WaveComplete) == "the wave is complete")
   }
 }

@@ -2,192 +2,303 @@ package cs553.web
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.api.L.svg as s
+import com.raquo.laminar.codecs.StringAsIsCodec
 import com.raquo.laminar.nodes.ReactiveSvgElement
+import cs553.core.ids.NodeId
 import org.scalajs.dom
 
 /** The SVG canvas: edges, nodes, phase labels, actions and mailboxes. It draws a `Frame` and
   * computes nothing about the algorithm.
+  *
+  * The `svg` element stays mounted. Each node, edge and envelope is one keyed element whose
+  * attributes follow the frame, so a step changes only what it touches. The canvas reports its
+  * measured size, and the view box is that size, so one unit is one pixel.
   */
 object Canvas {
 
   private type Svg = ReactiveSvgElement[dom.svg.Element]
 
   def render(frame: Signal[Frame], dispatch: Observer[UiEvent]): HtmlElement = {
-    div(cls("canvas"), child <-- frame.map(f => draw(f, dispatch)))
-  }
-
-  private def draw(frame: Frame, dispatch: Observer[UiEvent]): Svg = {
-    val at = frame.nodes.map(n => n.id -> n.at).toMap
-    s.svg(
-      s.cls("graph"),
-      s.viewBox := frame.box.attr,
-      s.preserveAspectRatio := "xMidYMid meet",
-      s.defs(
-        s.marker(
-          s.idAttr := "arrow",
-          s.viewBox := "0 0 10 10",
-          s.refX := "10",
-          s.refY := "5",
-          s.markerWidth := "7",
-          s.markerHeight := "7",
-          s.orient := "auto-start-reverse",
-          s.path(s.d := "M 0 1 L 10 5 L 0 9 z", s.cls("arrowhead"))
-        )
-      ),
-      s.g(frame.edges.flatMap(e => at.get(e.from).zip(at.get(e.to)).map((a, b) => edge(e, a, b)))),
-      s.g(frame.nodes.map(n => node(n, dispatch))),
-      s.g(
-        frame.channels.flatMap { c =>
-          at.get(c.from)
-            .zip(at.get(c.to))
-            .toList
-            .flatMap((a, b) => Mailbox.render(c, a, b, dispatch))
-        }
+    div(
+      cls("canvas"),
+      s.svg(
+        s.cls("graph"),
+        s.viewBox <-- frame.map(_.box.attr).distinct,
+        s.preserveAspectRatio := "xMidYMid meet",
+        measure(dispatch),
+        s.defs(
+          s.marker(
+            s.idAttr := "arrow",
+            s.viewBox := "0 0 10 10",
+            s.refX := "10",
+            s.refY := "5",
+            s.markerWidth := "8",
+            s.markerHeight := "8",
+            s.orient := "auto-start-reverse",
+            s.path(s.d := "M 0 1 L 10 5 L 0 9 z", s.cls("arrowhead"))
+          )
+        ),
+        s.g(children <-- frame.map(_.edges).split(e => (e.from, e.to))((_, _, e) => edge(e))),
+        s.g(children <-- frame.map(_.nodes).split(_.id)((id, _, n) => node(id, n, dispatch))),
+        s.g(
+          children <-- frame
+            .map(_.envelopes)
+            .split(_.id)((_, _, e) => Mailbox.envelope(e, dispatch))
+        ),
+        s.g(children <-- frame.map(_.more).split(m => (m.from, m.to))((_, _, m) => Mailbox.more(m)))
       )
     )
   }
 
-  private def edge(e: EdgeView, a: Point, b: Point): Svg = {
-    val dx = b.x - a.x
-    val dy = b.y - a.y
-    val length = math.max(1.0, math.sqrt(dx * dx + dy * dy))
-    val inset = Layout.nodeRadius + 3
-    val (ux, uy) = (dx / length, dy / length)
+  /** Reports the size of the `svg` element on mount and on each resize. */
+  private def measure(dispatch: Observer[UiEvent]): Modifier[Svg] = {
+    onMountUnmountCallbackWithState[Svg, dom.ResizeObserver](
+      mount = ctx => {
+        val observer = new dom.ResizeObserver((entries, _) => {
+          entries.headOption.foreach { entry =>
+            val rect = entry.contentRect
+            if rect.width > 0 && rect.height > 0 then {
+              dispatch.onNext(
+                UiEvent.Resized(
+                  Size(math.round(rect.width).toDouble, math.round(rect.height).toDouble)
+                )
+              )
+            }
+          }
+        })
+        observer.observe(ctx.thisNode.ref)
+        observer
+      },
+      unmount = (_, observer) => observer.foreach(_.disconnect())
+    )
+  }
+
+  private val tabIndexAttr = s.svgAttr("tabindex", StringAsIsCodec, None)
+  private val roleAttr = s.svgAttr("role", StringAsIsCodec, None)
+  private val ariaLabelAttr = s.svgAttr("aria-label", StringAsIsCodec, None)
+
+  /** Makes an SVG element work like a button: a click, Enter or Space sends the event. */
+  def pressable(label: Signal[String], event: Signal[UiEvent], dispatch: Observer[UiEvent]) = {
+    List[Modifier[Svg]](
+      tabIndexAttr := "0",
+      roleAttr := "button",
+      ariaLabelAttr <-- label,
+      onClick.compose(_.sample(event)) --> dispatch,
+      onKeyDown
+        .filter(k => k.key == "Enter" || k.key == " ")
+        .preventDefault
+        .compose(_.sample(event)) --> dispatch
+    )
+  }
+
+  private def edge(e: Signal[EdgeView]): Svg = {
+    def ends(v: EdgeView): (Double, Double, Double, Double) = {
+      val dx = v.b.x - v.a.x
+      val dy = v.b.y - v.a.y
+      val length = math.max(1.0, math.sqrt(dx * dx + dy * dy))
+      val inset = Layout.nodeRadius + 3
+      val (ux, uy) = (dx / length, dy / length)
+      (v.a.x + ux * inset, v.a.y + uy * inset, v.b.x - ux * inset, v.b.y - uy * inset)
+    }
+    val line = e.map(ends)
     s.line(
       s.cls("edge"),
-      s.cls("edge--tree") := e.tree,
-      s.x1 := (a.x + ux * inset).toString,
-      s.y1 := (a.y + uy * inset).toString,
-      s.x2 := (b.x - ux * inset).toString,
-      s.y2 := (b.y - uy * inset).toString,
-      if e.directed then { s.markerEnd := "url(#arrow)" }
-      else { emptyMod }
+      s.cls("edge--tree") <-- e.map(_.tree),
+      s.x1 <-- line.map(_._1.toString),
+      s.y1 <-- line.map(_._2.toString),
+      s.x2 <-- line.map(_._3.toString),
+      s.y2 <-- line.map(_._4.toString),
+      s.markerEnd <-- e.map(v =>
+        if v.directed then { "url(#arrow)" }
+        else { "" }
+      )
     )
   }
 
-  private def node(n: NodeView, dispatch: Observer[UiEvent]): Svg = {
+  private def node(id: NodeId, n: Signal[NodeView], dispatch: Observer[UiEvent]): Svg = {
     val r = Layout.nodeRadius
-    // Nodes at the top or bottom of the circle get the label above or below. Nodes at the sides
-    // get it outside, wrapped at each comma, so that a narrow screen does not clip it.
-    val length = math.max(1.0, math.sqrt(n.at.x * n.at.x + n.at.y * n.at.y))
-    val vertical = math.abs(n.at.y / length) > 0.9
-    val above = n.at.y < 0
-    val lines =
-      if vertical then { List(n.phase) }
-      else { n.phase.split(", ").toList }
-    val lineHeight = 17.0
-    val (lx, ly, anchor) =
-      if vertical && above then { (n.at.x, n.at.y - r - 12, "middle") }
-      else if vertical then { (n.at.x, n.at.y + r + 22, "middle") }
-      else if n.at.x > 0 then {
-        (n.at.x + r + 10, n.at.y + 5 - lineHeight * (lines.size - 1) / 2, "start")
-      } else { (n.at.x - r - 10, n.at.y + 5 - lineHeight * (lines.size - 1) / 2, "end") }
-    val actionDy = if vertical && above then { -20.0 }
-    else { 20.0 }
-    val actionY = if vertical then { ly }
-    else { ly + lineHeight * (lines.size - 1) }
     s.g(
       s.cls("node"),
-      s.cls("node--current") := n.current,
-      s.cls("node--decided") := n.decided,
-      s.circle(
-        s.cx := n.at.x.toString,
-        s.cy := n.at.y.toString,
-        s.r := r.toString,
-        s.cls("node-circle"),
-        onClick.mapTo(UiEvent.SelectNode(n.id)) --> dispatch
-      ),
-      s.text(
-        s.cls("node-id"),
-        s.x := n.at.x.toString,
-        s.y := (n.at.y + 5).toString,
-        s.textAnchor := "middle",
-        n.id.value.toString
-      ),
-      s.text(
-        s.cls("node-phase"),
-        s.x := lx.toString,
-        s.y := ly.toString,
-        s.textAnchor := anchor,
-        lines.zipWithIndex.map { case (line, i) =>
-          s.tspan(
-            s.x := lx.toString,
-            s.dy := (if i == 0 then { "0" }
-                     else { lineHeight.toString }),
-            line
-          )
-        }
-      ),
-      n.actions.zipWithIndex.map { case (a, i) =>
+      s.cls("node--current") <-- n.map(_.current),
+      s.cls("node--decided") <-- n.map(_.decided),
+      s.g(
+        s.cls("node-hit"),
+        pressable(Val(s"Node ${id.value}"), Val(UiEvent.SelectNode(id)), dispatch),
+        s.circle(
+          s.cls("node-circle"),
+          s.cx <-- n.map(_.at.x.toString),
+          s.cy <-- n.map(_.at.y.toString),
+          s.r := r.toString
+        ),
         s.text(
-          s.cls("node-action"),
-          s.x := lx.toString,
-          s.y := (actionY + actionDy * (i + 1)).toString,
-          s.textAnchor := anchor,
-          s.titleTag(s"Node ${n.id.value}: ${a.label}"),
-          a.label,
-          onClick.mapTo(UiEvent.Fire(n.id, a.index)) --> dispatch
+          s.cls("node-id"),
+          s.x <-- n.map(_.at.x.toString),
+          s.y <-- n.map(v => (v.at.y + 5).toString),
+          s.textAnchor := "middle",
+          id.value.toString
+        )
+      ),
+      child <-- n.map(v => (Layout.labelSpot(v.at, v.side, v.lines.size), v.lines)).distinct.map {
+        case (spot, lines) =>
+          label(spot, lines)
+      },
+      child <-- n.map(v => (Layout.labelSpot(v.at, v.side, v.lines.size), v.actions)).distinct.map {
+        case (spot, actions) =>
+          s.g(actions.zipWithIndex.map { case (a, i) => action(id, a, spot, i, dispatch) })
+      }
+    )
+  }
+
+  /** The label lines on a card of the canvas colour, so that an edge does not cross the text. */
+  private def label(spot: LabelSpot, lines: List[String]): Svg = {
+    val card = Layout.labelCard(spot, lines)
+    s.g(
+      s.rect(
+        s.cls("label-card"),
+        s.x := card.x.toString,
+        s.y := card.y.toString,
+        s.width := card.width.toString,
+        s.height := card.height.toString,
+        s.rx := "3"
+      ),
+      labelText(spot, lines)
+    )
+  }
+
+  private def labelText(spot: LabelSpot, lines: List[String]): Svg = {
+    s.text(
+      s.cls("node-phase"),
+      s.x := spot.x.toString,
+      s.y := spot.firstY.toString,
+      s.textAnchor := spot.anchor,
+      lines.zipWithIndex.map { case (line, i) =>
+        s.tspan(
+          s.x := spot.x.toString,
+          s.dy := (if i == 0 then { "0" }
+                   else { Layout.lineHeight.toString }),
+          line
         )
       }
     )
   }
-}
 
-/** The queue of one channel, drawn near the receiver. */
-object Mailbox {
-
-  private type Svg = ReactiveSvgElement[dom.svg.Element]
-
-  def render(c: ChannelView, from: Point, to: Point, dispatch: Observer[UiEvent]): List[Svg] = {
-    val widths = c.queue.map(e => Layout.envelopeWidth(e.label))
-    val spots = Layout.queue(from, to, widths, c.shared)
-    val hidden = c.queue.size - spots.size
-    if hidden <= 0 then { c.queue.zip(spots).toList.map((e, p) => envelope(e, p, dispatch)) }
-    else {
-      val shown = c.queue.zip(spots).dropRight(1).toList.map((e, p) => envelope(e, p, dispatch))
-      val more = spots.lastOption.toList.map { p =>
-        s.text(
-          s.cls("queue-more"),
-          s.x := p.x.toString,
-          s.y := (p.y + 4).toString,
-          s.textAnchor := "middle",
-          s"+${hidden + 1}"
-        )
-      }
-      shown ++ more
-    }
-  }
-
-  private def envelope(e: EnvelopeView, p: Point, dispatch: Observer[UiEvent]): Svg = {
-    val w = Layout.envelopeWidth(e.label)
+  /** A spontaneous action, drawn like an envelope next to its node. */
+  private def action(
+      id: NodeId,
+      a: ActionView,
+      spot: LabelSpot,
+      i: Int,
+      dispatch: Observer[UiEvent]
+  ): Svg = {
+    val w = Layout.envelopeWidth(a.label)
     val h = Layout.envelopeHeight
-    val tip = {
-      val base = s"${e.label} from node ${e.id.from.value} to node ${e.id.to.value}"
-      e.blocked match {
-        case None                       => s"$base. Click to deliver."
-        case Some(Blocked.Behind(head)) => s"$base. It waits behind $head: this channel is FIFO."
-        case Some(Blocked.Past)         => s"$base. Continue from this step to deliver it."
-      }
+    val (cx, step) = spot.side match {
+      case LabelSide.Above => (spot.x, -26.0)
+      case LabelSide.Below => (spot.x, 26.0)
+      case LabelSide.Right => (spot.x + w / 2, 26.0)
+      case LabelSide.Left  => (spot.x - w / 2, 26.0)
     }
-    val event = e.blocked match {
-      case None    => UiEvent.Deliver(e.id)
-      case Some(_) => UiEvent.SelectEnvelope(e.id)
-    }
+    val cy = spot.actionY + step * i
+    val tip = s"Node ${id.value}: ${a.label}"
     s.g(
-      s.cls("envelope"),
-      s.cls("envelope--blocked") := e.blocked.isDefined,
-      s.cls("envelope--next") := e.next,
-      s.transform := s"translate(${p.x} ${p.y})",
+      s.cls("envelope", "action"),
+      s.cls("envelope--next") := a.next,
+      s.transform := s"translate($cx $cy)",
+      pressable(Val(tip), Val(UiEvent.Fire(id, a.index)), dispatch),
       s.titleTag(tip),
+      Mailbox.hit(w),
       s.rect(
+        s.cls("token"),
         s.x := (-w / 2).toString,
         s.y := (-h / 2).toString,
         s.width := w.toString,
         s.height := h.toString,
         s.rx := "4"
       ),
-      s.text(s.y := "4", s.textAnchor := "middle", e.label),
-      onClick.mapTo(event) --> dispatch
+      s.text(s.y := "4", s.textAnchor := "middle", a.label)
+    )
+  }
+}
+
+/** The envelopes of the mailboxes. Each one waits on its edge near the receiver, with a notch that
+  * points at the receiver.
+  */
+object Mailbox {
+
+  private type Svg = ReactiveSvgElement[dom.svg.Element]
+
+  /** A transparent rectangle that makes a small mark easy to tap. */
+  def hit(w: Double): Svg = {
+    val hw = math.max(w + 8, 40.0)
+    s.rect(
+      s.cls("hit"),
+      s.x := (-hw / 2).toString,
+      s.y := "-16",
+      s.width := hw.toString,
+      s.height := "32"
+    )
+  }
+
+  private def tip(e: EnvelopeView): String = e.blocked match {
+    case None                       => s"${e.describe}. Click to deliver."
+    case Some(Blocked.Behind(head)) =>
+      s"${e.describe}. It waits behind $head: this channel is FIFO."
+    case Some(Blocked.Past) => s"${e.describe}. Continue from this step to deliver it."
+  }
+
+  private def event(e: EnvelopeView): UiEvent = e.blocked match {
+    case None    => UiEvent.Deliver(e.id)
+    case Some(_) => UiEvent.SelectEnvelope(e.id)
+  }
+
+  /** The notch: a small triangle on the side of the envelope that faces the receiver. */
+  private def notch(e: EnvelopeView): String = {
+    val w = Layout.envelopeWidth(e.label)
+    val h = Layout.envelopeHeight
+    val dx = e.toward.x - e.at.x
+    val dy = e.toward.y - e.at.y
+    val length = math.max(1.0, math.sqrt(dx * dx + dy * dy))
+    val (ux, uy) = (dx / length, dy / length)
+    val t = math.min((w / 2) / math.max(math.abs(ux), 0.01), (h / 2) / math.max(math.abs(uy), 0.01))
+    val (bx, by) = (ux * t, uy * t)
+    val (px, py) = (-uy * 4, ux * 4)
+    val (tx, ty) = (ux * (t + 6), uy * (t + 6))
+    def r(v: Double): String = (math.round(v * 10) / 10.0).toString
+    s"M ${r(bx + px)} ${r(by + py)} L ${r(tx)} ${r(ty)} L ${r(bx - px)} ${r(by - py)} Z"
+  }
+
+  def envelope(e: Signal[EnvelopeView], dispatch: Observer[UiEvent]): Svg = {
+    val h = Layout.envelopeHeight
+    val width = e.map(v => Layout.envelopeWidth(v.label))
+    s.g(
+      s.cls("envelope"),
+      s.cls("envelope--blocked") <-- e.map(_.blocked.isDefined),
+      s.cls("envelope--next") <-- e.map(_.next),
+      s.cls("envelope--fresh") <-- e.map(_.fresh),
+      s.transform <-- e.map(v => s"translate(${v.at.x} ${v.at.y})"),
+      Canvas.pressable(e.map(_.describe), e.map(event), dispatch),
+      s.titleTag(child.text <-- e.map(tip)),
+      child <-- width.distinct.map(hit),
+      s.path(s.cls("notch"), s.d <-- e.map(notch)),
+      s.rect(
+        s.cls("token"),
+        s.x <-- width.map(w => (-w / 2).toString),
+        s.y := (-h / 2).toString,
+        s.width <-- width.map(_.toString),
+        s.height := h.toString,
+        s.rx := "4"
+      ),
+      s.text(s.y := "4", s.textAnchor := "middle", child.text <-- e.map(_.label))
+    )
+  }
+
+  def more(m: Signal[MoreView]): Svg = {
+    s.text(
+      s.cls("queue-more"),
+      s.x <-- m.map(_.at.x.toString),
+      s.y <-- m.map(v => (v.at.y + 4).toString),
+      s.textAnchor := "middle",
+      child.text <-- m.map(v => s"+${v.count}")
     )
   }
 }

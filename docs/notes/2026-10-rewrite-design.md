@@ -186,7 +186,7 @@ Each algorithm follows the Fokkink variant, and `docs/algorithms/<alg>.md` docum
 - **Invariant line.** One line appears only when an invariant breaks, for example "Total 30 ≠ 35: you dropped a transfer."
 - **Termination.** Two separate lines: "Algorithm decided at step 14" and "Network quiescent at step 17 (only an observer knows this)."
 - **How the UI teaches the actor model:**
-  - Mailboxes, not flying dots. Envelopes wait in channel queues, colored by sender.
+  - Mailboxes, not flying dots. Envelopes wait in channel queues. A notch on each envelope points at the receiver, and the hover text names the sender, the receiver and the place in the queue. The UI does not color envelopes by sender, so the one accent keeps one meaning.
   - A thin accent outline marks the one node that handles a message.
   - Phase labels change as text ("idle → recording → done"), which makes behavior change visible.
   - No panel ever shows state that two nodes share.

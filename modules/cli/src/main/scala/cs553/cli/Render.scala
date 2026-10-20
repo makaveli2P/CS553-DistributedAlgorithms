@@ -41,10 +41,10 @@ object Render {
       case TraceEvent.Rejected(at, n, c, error) =>
         List(f"#${at.step}%-4d ${node(n)} ${cause(c)}%-28s REJECTED: $error")
       case TraceEvent.Dropped(at, id)       => List(f"#${at.step}%-4d dropped ${envelope(id)}")
-      case TraceEvent.Decided(_, n, output) => List(s"      ${node(n)} DECIDES ${o.label(output)}")
+      case TraceEvent.Decided(_, n, output) => List(s"      ${node(n)} DECIDES: ${o.label(output)}")
       case TraceEvent.Finished(at, outcome) =>
         val sentCount = messages.size
-        val decisions = run.decisions.map { case (n, out) => s"node ${n.value} ${o.label(out)}" }
+        val decisions = run.decisions.map { case (n, out) => s"node ${n.value}: ${o.label(out)}" }
         val decided = if decisions.isEmpty then { "none" }
         else { decisions.mkString(", ") }
         List(

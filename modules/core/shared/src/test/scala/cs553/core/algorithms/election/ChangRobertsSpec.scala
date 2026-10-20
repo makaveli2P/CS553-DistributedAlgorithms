@@ -337,11 +337,14 @@ final class ChangRobertsSpec extends AnyFunSuite with PropertyBudget with Either
     assert(Inspect[CrMsg].label(CrMsg.Elect(Uid(7))) == "Elect(7)")
     assert(Inspect[CrMsg].fields(CrMsg.Leader(Uid(9))) == List("uid" -> "9"))
     assert(Inspect[CrAction].label(CrAction.Wake) == "Wake")
-    assert(Inspect[CrOutput].label(CrOutput.Follows(Uid(9))) == "Follows(9)")
-    assert(Inspect[CrState].label(CrState.Active(Uid(4))) == "active 4")
+    assert(Inspect[CrOutput].label(CrOutput.Follows(Uid(9))) == "the leader is uid 9")
+    assert(Inspect[CrOutput].label(CrOutput.Elected(Uid(6))) == "it is the leader (uid 6)")
+    assert(Inspect[CrState].label(CrState.Active(Uid(4))) == "active, uid 4")
+    assert(Inspect[CrState].label(CrState.Leader(Uid(6))) == "leader (uid 6)")
+    assert(Inspect[CrState].label(CrState.Passive(None)) == "passive")
     assert(
       Inspect[CrState].fields(CrState.Follower(None, Uid(9))) ==
-        List("phase" -> "Follower", "uid" -> "none", "leader" -> "9")
+        List("phase" -> "follower", "uid" -> "none", "leader" -> "uid 9")
     )
   }
 }

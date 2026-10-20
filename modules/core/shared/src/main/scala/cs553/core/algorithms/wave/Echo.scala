@@ -299,19 +299,30 @@ object Echo {
 
 object EchoState {
   given Inspect[EchoState] = new Inspect[EchoState] {
+
+    /** The label has one or two parts. The UI shows each part on its own line. */
     def label(s: EchoState): String = s.phase match {
+      case EchoPhase.Waiting => s"waiting, ${s.received} of ${s.expected} received"
+      case EchoPhase.Idle | EchoPhase.Echoed | EchoPhase.Decided => phaseName(s.phase)
+    }
+    private def phaseName(phase: EchoPhase): String = phase match {
       case EchoPhase.Idle    => "idle"
-      case EchoPhase.Waiting => s"waiting, received ${s.received} of ${s.expected}"
+      case EchoPhase.Waiting => "waiting"
       case EchoPhase.Echoed  => "echoed"
       case EchoPhase.Decided => "decided"
     }
-    def fields(s: EchoState): List[(String, String)] = List(
-      "role" -> s.role.toString,
-      "phase" -> s.phase.toString,
-      "parent" -> s.parent.fold("none")(_.value.toString),
-      "received" -> s.received.toString,
-      "expected" -> s.expected.toString
-    )
+    def fields(s: EchoState): List[(String, String)] = {
+      val role = s.role match {
+        case Role.Initiator    => "initiator"
+        case Role.NonInitiator => "not an initiator"
+      }
+      List(
+        "role" -> role,
+        "phase" -> phaseName(s.phase),
+        "parent" -> s.parent.fold("none yet")(p => s"node ${p.value}"),
+        "received" -> s"${s.received} of ${s.expected}"
+      )
+    }
   }
 
   /** The parent edges. Together they grow into the spanning tree of the wave. */
@@ -343,7 +354,7 @@ object EchoAction {
 object EchoOutput {
   given Inspect[EchoOutput] = new Inspect[EchoOutput] {
     def label(o: EchoOutput): String = o match {
-      case EchoOutput.WaveComplete => "WaveComplete"
+      case EchoOutput.WaveComplete => "the wave is complete"
     }
     def fields(o: EchoOutput): List[(String, String)] = Nil
   }

@@ -27,16 +27,20 @@ enum Panel {
   case Settings
 }
 
-/** The screen state that is not part of the run. */
-final case class View(panel: Panel, playing: Boolean, speed: Speed, copied: Boolean)
+/** The screen state that is not part of the run. `size` is the measured size of the canvas. */
+final case class View(panel: Panel, playing: Boolean, speed: Speed, copy: CopyState, size: Size)
 
 object View {
-  val initial: View = View(Panel.Closed, playing = false, Speed.Slow, copied = false)
+  val initial: View =
+    View(Panel.Closed, playing = false, Speed.Slow, CopyState.Idle, Layout.defaultSize)
 }
+
+/** A notice on the home screen: one plain line, and the detail for a developer. */
+final case class Notice(text: String, detail: String)
 
 /** The screen. */
 enum Page {
-  case Home(notice: Option[String])
+  case Home(notice: Option[Notice])
   case Sandbox(session: Session[?, ?, ?, ?], view: View)
 }
 
@@ -64,6 +68,8 @@ enum UiEvent {
   case ChooseSeed(seed: Long)
   case ChooseOrder(order: ChannelOrder)
   case Copied
+  case CopyFailed
+  case Resized(size: Size)
 }
 
 /** The pure state machine of the UI. */
@@ -78,7 +84,11 @@ object Ui {
         state.page match {
           case Page.Home(_)                => state
           case Page.Sandbox(session, view) =>
-            UiState(sandbox(session, view.copy(copied = false), other))
+            val keepCopy = other match {
+              case UiEvent.Resized(_) => view.copy
+              case _                  => CopyState.Idle
+            }
+            UiState(sandbox(session, view.copy(copy = keepCopy), other))
         }
     }
   }
@@ -87,7 +97,9 @@ object Ui {
     case Route.Home     => initial
     case Route.Open(id) =>
       Registry.find(id) match {
-        case None      => UiState(Page.Home(Some(s"No algorithm has the id '${id.value}'.")))
+        case None =>
+          val text = s"No algorithm has the id '${id.value}'. Pick an algorithm to start a run."
+          UiState(Page.Home(Some(Notice(text, text))))
         case Some(any) => fromResult(Session.open(any.algorithm))
       }
     case Route.Replay(link, step) =>
@@ -96,13 +108,17 @@ object Ui {
           Registry.find(id).toRight(s"No algorithm has the id '${id.value}'.")
         }
       found match {
-        case Left(error) => UiState(Page.Home(Some(s"This link could not be read: $error")))
+        case Left(error) => UiState(Page.Home(Some(Notice(damagedLink, error))))
         case Right(any)  => fromResult(Session.fromLink(any.algorithm, link, step))
       }
   }
 
+  /** The one line for each link or run that cannot open. The detail goes to the developer. */
+  val damagedLink: String =
+    "This link is damaged or from another version. Pick an algorithm to start a new run."
+
   private def fromResult(result: Either[String, Session[?, ?, ?, ?]]): UiState = result match {
-    case Left(error)    => UiState(Page.Home(Some(s"This run could not start: $error")))
+    case Left(error)    => UiState(Page.Home(Some(Notice(damagedLink, error))))
     case Right(session) => UiState(Page.Sandbox(session, View.initial))
   }
 
@@ -142,7 +158,11 @@ object Ui {
         Page.Sandbox(session.withSeed(seed), view.copy(playing = false))
       case UiEvent.ChooseOrder(order) =>
         Page.Sandbox(session.withOrder(order), view.copy(playing = false))
-      case UiEvent.Copied => Page.Sandbox(session, view.copy(copied = true))
+      case UiEvent.Copied        => Page.Sandbox(session, view.copy(copy = CopyState.Copied))
+      case UiEvent.CopyFailed    => Page.Sandbox(session, view.copy(copy = CopyState.Failed))
+      case UiEvent.Resized(size) =>
+        if size == view.size then { Page.Sandbox(session, view) }
+        else { Page.Sandbox(session, view.copy(size = size)) }
     }
   }
 
@@ -163,7 +183,7 @@ object Ui {
       else { None }
   }
 
-  def notice(state: UiState): Option[String] = state.page match {
+  def notice(state: UiState): Option[Notice] = state.page match {
     case Page.Home(notice)  => notice
     case Page.Sandbox(_, _) => None
   }
@@ -172,11 +192,11 @@ object Ui {
   def screen(state: UiState): Option[Screen] = state.page match {
     case Page.Home(_)                => None
     case Page.Sandbox(session, view) =>
-      session.frame.map { frame =>
+      session.frame(view.size).map { frame =>
         val panel = view.panel match {
           case Panel.Closed       => None
           case Panel.Node(id)     => session.nodePanel(id)
-          case Panel.Envelope(id) => session.envelopePanel(id)
+          case Panel.Envelope(id) => session.envelopePanel(frame, id)
           case Panel.Settings     => Some(PanelView.SettingsInfo(session.settings))
         }
         Screen(
@@ -188,7 +208,7 @@ object Ui {
           session.refused,
           view.playing,
           view.speed,
-          view.copied
+          view.copy
         )
       }
   }

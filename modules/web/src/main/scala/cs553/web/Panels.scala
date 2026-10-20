@@ -8,8 +8,12 @@ import cs553.core.protocol.ChannelOrder
   */
 object Panels {
 
-  def render(panel: Signal[Option[PanelView]], dispatch: Observer[UiEvent]): HtmlElement = {
-    div(child.maybe <-- panel.map(_.map(view => asideTag(cls("panel"), content(view, dispatch)))))
+  /** The open panel, as a child of the stage. The stage gives it a column next to the canvas. */
+  def render(
+      panel: Signal[Option[PanelView]],
+      dispatch: Observer[UiEvent]
+  ): Modifier[HtmlElement] = {
+    child.maybe <-- panel.map(_.map(view => asideTag(cls("panel"), content(view, dispatch))))
   }
 
   private def header(title: String, dispatch: Observer[UiEvent]): HtmlElement = {
@@ -26,18 +30,18 @@ object Panels {
 
   private def content(view: PanelView, dispatch: Observer[UiEvent]): List[HtmlElement] =
     view match {
-      case PanelView.NodeInfo(id, phase, fields, lastMessage, lastRule, decision) =>
+      case PanelView.NodeInfo(id, fields, waiting, lastMessage, lastRule, decision) =>
         List(
           header(s"Node ${id.value}", dispatch),
-          p(phase),
+          rows(fields ++ decision.map("decision" -> _).toList),
+          h3("Waiting for this node"),
+          if waiting.isEmpty then { p(cls("empty"), "Nothing waiting") }
+          else { ul(cls("waiting"), waiting.map(text => li(text))) },
           rows(
-            fields ++
-              lastMessage.map("last message" -> _).toList ++
-              lastRule.map("last rule" -> _).toList ++
-              decision.map("decision" -> _).toList
+            lastMessage.map("last handled" -> _).toList ++ lastRule.map("rule" -> _).toList
           )
         )
-      case PanelView.EnvelopeInfo(env, from, to, canDeliver) =>
+      case PanelView.EnvelopeInfo(env, canDeliver) =>
         val status = env.blocked match {
           case None                       => "Can be delivered now."
           case Some(Blocked.Behind(head)) => s"Waits behind $head. This channel is FIFO."
@@ -45,16 +49,8 @@ object Panels {
         }
         List(
           header(env.label, dispatch),
-          p(status),
-          rows(
-            List(
-              "from" -> s"node ${from.value}",
-              "to" -> s"node ${to.value}",
-              "sequence" -> env.id.seq.toString
-            ) ++
-              env.sentAt.map(s => "sent at step" -> s.toString).toList ++
-              env.fields
-          )
+          p(s"${env.describe}. $status"),
+          rows(env.sentAt.map(s => "sent at step" -> s.toString).toList ++ env.fields)
         ) ++ (if canDeliver then {
                 List(
                   button(
@@ -72,8 +68,12 @@ object Panels {
             cls("field"),
             span("Topology"),
             select(
-              settings.presets.map(name =>
-                option(value(name), name, selected(settings.preset.contains(name)))
+              settings.presets.map(choice =>
+                option(
+                  value(choice.name),
+                  choice.title,
+                  selected(settings.preset.contains(choice.name))
+                )
               ),
               onChange.mapToValue.map(UiEvent.ChoosePreset(_)) --> dispatch
             )
@@ -84,10 +84,17 @@ object Panels {
             input(
               typ("number"),
               minAttr("0"),
+              stepAttr("1"),
               defaultValue(settings.seed.toString),
-              onChange.mapToValue.map(_.toLongOption).collect { case Some(seed) =>
-                UiEvent.ChooseSeed(seed)
-              } --> dispatch
+              // A value that is not a whole number from 0 goes back to the seed of the run.
+              inContext { el =>
+                onChange.mapToValue --> { text =>
+                  text.trim.toLongOption.filter(_ >= 0) match {
+                    case Some(seed) => dispatch.onNext(UiEvent.ChooseSeed(seed))
+                    case None       => el.ref.value = settings.seed.toString
+                  }
+                }
+              }
             )
           ),
           div(
@@ -95,20 +102,8 @@ object Panels {
             span("Channel order"),
             div(
               cls("choice-row"),
-              orderOption(
-                "FIFO",
-                ChannelOrder.Fifo,
-                settings.fifo,
-                settings.orderLock.isDefined,
-                dispatch
-              ),
-              orderOption(
-                "Any order",
-                ChannelOrder.AnyOrder,
-                !settings.fifo,
-                settings.orderLock.isDefined,
-                dispatch
-              )
+              orderOption("FIFO", ChannelOrder.Fifo, settings, dispatch),
+              orderOption("Any order", ChannelOrder.AnyOrder, settings, dispatch)
             ),
             settings.orderLock.map(reason => p(cls("hint"), reason))
           )
@@ -118,8 +113,7 @@ object Panels {
   private def orderOption(
       text: String,
       order: ChannelOrder,
-      on: Boolean,
-      locked: Boolean,
+      settings: SettingsView,
       dispatch: Observer[UiEvent]
   ): HtmlElement = {
     label(
@@ -127,8 +121,8 @@ object Panels {
       input(
         typ("radio"),
         nameAttr("order"),
-        checked(on),
-        disabled(locked),
+        checked(settings.order == order),
+        disabled(settings.orderLock.isDefined),
         onChange.mapTo(UiEvent.ChooseOrder(order)) --> dispatch
       ),
       span(text)

@@ -31,9 +31,9 @@ object Registry {
     "A wave from one initiator builds a spanning tree, and the echoes tell the initiator that " +
       "each node took part.",
     List(
-      echoPreset("inputEcho", "inputEcho.dot", Some(NodeId(1))),
-      echoPreset("inputTarry", "inputTarry.dot", Some(NodeId(1))),
-      echoPreset("netgraph-6", "NetGraph_30-03-24-18-54-55.ngs.dot", None)
+      echoPreset("inputEcho", "Five nodes, one leaf", "inputEcho.dot", Some(NodeId(1))),
+      echoPreset("inputTarry", "Six nodes in three layers", "inputTarry.dot", Some(NodeId(1))),
+      echoPreset("netgraph-6", "Six-node network", "NetGraph_30-03-24-18-54-55.ngs.dot", None)
     ).flatten
   )
 
@@ -43,8 +43,8 @@ object Registry {
     Family.Election,
     "Initiators on a directed ring send their uids around, and only the largest uid comes back.",
     List(
-      ringPreset("ring-6", List(4, 1, 6, 2, 5, 3), Set(0, 2, 3)),
-      ringPreset("ring-8", List(3, 7, 1, 8, 5, 2, 6, 4), Set(0, 1, 4, 6))
+      ringPreset("ring-6", "Ring of 6", List(4, 1, 6, 2, 5, 3), Set(0, 2, 3)),
+      ringPreset("ring-8", "Ring of 8", List(3, 7, 1, 8, 5, 2, 6, 4), Set(0, 1, 4, 6))
     ).flatten
   )
 
@@ -55,25 +55,35 @@ object Registry {
   /** An Echo preset from a fixture file, prepared with `Echo.prepare`. `None` when the file is
     * missing or not valid; `RegistrySpec` makes sure that each preset loads.
     */
-  private def echoPreset(name: String, file: String, initiator: Option[NodeId]): Option[Preset] = {
+  private def echoPreset(
+      name: String,
+      title: String,
+      file: String,
+      initiator: Option[NodeId]
+  ): Option[Preset] = {
     val prepared = for {
       text <- TopologyFiles.all
         .collectFirst { case (`file`, t) => t }
         .toRight(NonEmptyList.one(TopologyError.Requirement(s"no fixture $file")))
       loaded <- Topology.fromDot(text)
       ready <- Echo.prepare(loaded, initiator)
-    } yield Preset(name, ready.topology)
+    } yield Preset(name, title, ready.topology)
     prepared.toOption
   }
 
   /** A directed ring `0 -> 1 -> ...` with these uids in ring order and these nodes as initiators.
     */
-  private def ringPreset(name: String, uids: List[Int], initiators: Set[Int]): Option[Preset] = {
+  private def ringPreset(
+      name: String,
+      title: String,
+      uids: List[Int],
+      initiators: Set[Int]
+  ): Option[Preset] = {
     val attrs = uids.zipWithIndex.map { case (uid, i) =>
       val role = if initiators.contains(i) then { Role.Initiator }
       else { Role.NonInitiator }
       NodeId(i) -> NodeAttrs(role, Some(Uid(uid)), Map.empty)
     }.toMap
-    Topology.ring(uids.size, attrs).toOption.map(Preset(name, _))
+    Topology.ring(uids.size, attrs).toOption.map(Preset(name, title, _))
   }
 }
