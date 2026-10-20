@@ -1,6 +1,7 @@
 package cs553.actors
 
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.ActorRef
+import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import cs553.core.Catalogue
 

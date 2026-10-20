@@ -4,7 +4,7 @@ Date: 2026-10-20
 
 ## Status
 
-Proposed. It becomes Accepted when `sbt actors/test` passes with the token on Scala 3.9.0.
+Accepted on 2026-10-20.
 
 ## Context
 
@@ -22,4 +22,4 @@ Milestone M0 must prove that the Akka `_3` artifacts resolve and run on Scala 3.
 
 - Learners see real Akka Typed behaviors and real asynchronous sends with `!`.
 - The Akka modules need a token. ADR-0002 describes the token and the fallback.
-- On 2026-10-20 the proof is open, because `AKKA_REPO_TOKEN` is not available yet. `core` and `web` compile and pass their tests on Scala 3.9.0 with Scala.js 1.22.0 and Laminar 17.2.1. Run `sbt actors/test` with the token to close the proof.
+- On 2026-10-20 the proof passed. Akka 2.10.24 `_3` artifacts resolve with the token, and `sbt actors/test` passes on Scala 3.9.0. Without `AKKA_LICENSE_KEY`, or with a development key, Akka logs the warning "Dev use only". `core` and `web` pass their tests on Scala 3.9.0 with Scala.js 1.22.0 and Laminar 17.2.1.
