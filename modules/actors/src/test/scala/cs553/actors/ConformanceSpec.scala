@@ -8,13 +8,17 @@ import cs553.core.registry.AnyAlgorithm
 import cs553.core.registry.Registry
 import cs553.core.rng.Seed
 import cs553.core.topology.Preset
+import cs553.core.trace.Choice
 import cs553.core.trace.Engine
+import cs553.core.trace.EnvelopeId
 import cs553.core.trace.Outcome
 import cs553.core.trace.Policy
 import cs553.core.trace.Run
 import cs553.core.trace.RunSpec
+import cs553.core.trace.Stamp
 import cs553.core.trace.TraceEvent
 import org.scalatest.EitherValues
+import org.scalatest.OptionValues
 import org.scalatest.funsuite.AnyFunSuiteLike
 
 import scala.concurrent.duration.*
@@ -25,7 +29,8 @@ import scala.concurrent.duration.*
 final class ConformanceSpec
     extends ScalaTestWithActorTestKit
     with AnyFunSuiteLike
-    with EitherValues {
+    with EitherValues
+    with OptionValues {
 
   /** A failure guard. A run replies well before it. */
   private val guard: FiniteDuration = 20.seconds
@@ -110,5 +115,43 @@ final class ConformanceSpec
       val run = conform(a, a.spec(preset, Seed(3)).copy(stepLimit = 5), "limit-chang-roberts")
       assert(run.outcome.contains(Outcome.StepLimit))
     }
+  }
+
+  /** The choices of a seeded run up to the first world where one channel buffers two or more
+    * envelopes, and the ids in that channel, oldest first.
+    */
+  private def crowded[S, M, A, O](
+      a: Algorithm[S, M, A, O],
+      spec: RunSpec[A]
+  ): Option[(List[Choice[A]], Vector[EnvelopeId])] = {
+    val simulation = a.simulate(spec).value
+    simulation.worlds.zipWithIndex.collectFirst(Function.unlift { case (world, k) =>
+      world.channels.values.find(_.size >= 2).map { queue =>
+        (simulation.choices.take(k), queue.map(_.env.id))
+      }
+    })
+  }
+
+  test("Chang-Roberts in Fifo order: a Script with a Drop equals the Simulator trace") {
+    val a = Registry.changRoberts
+    val preset = a.presets.headOption.value
+    val found = seeds.iterator
+      .map { seed =>
+        val spec = a.spec(preset, Seed(seed)).copy(order = ChannelOrder.Fifo)
+        crowded(a, spec).map { case (prefix, queue) => (spec, prefix, queue) }
+      }
+      .collectFirst { case Some(hit) => hit }
+    val (spec, prefix, queue) = found.value
+    val first = queue.headOption.value
+    val second = queue.lift(1).value
+    // Drop the head: the channel actor must remove it, or the next Release gives NotHead.
+    val headDropped = Policy.Script(prefix ++ List(Choice.Drop(first), Choice.Deliver(second)))
+    val run1 = conform(a, spec.copy(policy = headDropped), "drop-head-chang-roberts")
+    assert(run1.trace.contains(TraceEvent.Dropped(Stamp(prefix.size + 1, 0, 0), first)))
+    // Drop the second envelope: in Fifo order, a Drop of an envelope that is not the head is legal.
+    val secondDropped = Policy.Script(prefix ++ List(Choice.Drop(second), Choice.Deliver(first)))
+    val run2 = conform(a, spec.copy(policy = secondDropped), "drop-second-chang-roberts")
+    assert(run2.trace.contains(TraceEvent.Dropped(Stamp(prefix.size + 1, 0, 0), second)))
+    assert(run2.outcome.contains(Outcome.ScriptExhausted))
   }
 }

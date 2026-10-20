@@ -96,4 +96,19 @@ final class ChannelSpec extends AnyFunSuite {
     )
     assert(f.receiver.receiveAll() == List(NodeAdapter.Deliver(item(1), 2)))
   }
+
+  test("in Fifo order, Drop removes an envelope that is not the head, and the order stays") {
+    val f = filled(ChannelOrder.Fifo)
+    val _ = f.reports.receiveAll()
+    f.kit.run(Channel.Drop(item(1).env.id))
+    f.kit.run(Channel.Release(item(0).env.id, 1))
+    f.kit.run(Channel.Release(item(2).env.id, 2))
+    assert(!f.reports.hasMessages)
+    assert(
+      f.receiver.receiveAll() == List(
+        NodeAdapter.Deliver(item(0), 1),
+        NodeAdapter.Deliver(item(2), 2)
+      )
+    )
+  }
 }

@@ -8,11 +8,15 @@ import akka.actor.typed.SpawnProtocol
 import akka.util.Timeout
 import cs553.core.ids.AlgorithmId
 import cs553.core.ids.NodeId
+import cs553.core.protocol.NodeCtx
+import cs553.core.protocol.Protocol
 import cs553.core.registry.Algorithm
 import cs553.core.registry.AnyAlgorithm
 import cs553.core.registry.Registry
 import cs553.core.rng.Seed
 import cs553.core.topology.Edge
+import cs553.core.topology.NodeAttrs
+import cs553.core.topology.Topology
 import cs553.core.trace.Choice
 import cs553.core.trace.Engine
 import cs553.core.trace.EnvelopeId
@@ -20,11 +24,11 @@ import cs553.core.trace.Policy
 import cs553.core.trace.RunSpec
 import cs553.core.trace.TraceEvent
 import cs553.core.world.RunError
+import cs553.core.world.Simulator
 import org.scalatest.EitherValues
 import org.scalatest.OptionValues
 import org.scalatest.funsuite.AnyFunSuiteLike
 
-import scala.concurrent.Await
 import scala.concurrent.duration.*
 
 final class RunGuardianSpec
@@ -46,8 +50,16 @@ final class RunGuardianSpec
       spec: RunSpec[A],
       name: String
   ): (ActorRef[Nothing], TestProbe[RunGuardian.Result[S, M, A, O]]) = {
+    startWith(a.protocol, spec, name)
+  }
+
+  private def startWith[S, M, A, O](
+      p: Protocol[S, M, A, O],
+      spec: RunSpec[A],
+      name: String
+  ): (ActorRef[Nothing], TestProbe[RunGuardian.Result[S, M, A, O]]) = {
     val probe = createTestProbe[RunGuardian.Result[S, M, A, O]]()
-    (spawn(RunGuardian(a.protocol, spec, probe.ref), name), probe)
+    (spawn(RunGuardian(p, spec, probe.ref), name), probe)
   }
 
   private def finished[S, M, A, O](probe: TestProbe[RunGuardian.Result[S, M, A, O]]) = {
@@ -116,9 +128,14 @@ final class RunGuardianSpec
     given Timeout = Timeout(guard)
     val alg = AnyAlgorithm(Registry.changRoberts)
     val spec = alg.algorithm.defaultSpec.value
-    // The test thread is outside the actor system, so it can wait for the Future (a guard only).
-    val result = Await.result(MediatedEngine.record(system, "run-1", alg)(spec), guard)
-    result match {
+    // The probe gets the result of the Future. The guard is a failure guard only (coding rule 25).
+    val probe = TestProbe[RunGuardian.Result[alg.S, alg.M, alg.A, alg.O]]()(using system)
+    MediatedEngine
+      .record(system, "run-1", alg)(spec)
+      .foreach(probe.ref ! _)(using
+        system.executionContext
+      )
+    probe.receiveMessage(guard) match {
       case RunGuardian.Finished(run) =>
         val engines = run.trace.collect { case TraceEvent.Started(_, e, _) => e }
         assert(engines == Vector(Engine.AkkaMediated))
@@ -126,5 +143,47 @@ final class RunGuardianSpec
       case RunGuardian.Failed(error) => fail(s"the run failed: $error")
     }
     system.terminate()
+  }
+
+  /** `p`, but each `onMessage` throws, as a protocol with a bug can. Akka then stops the node. */
+  private def crashing[S, M, A, O](p: Protocol[S, M, A, O]): Protocol[S, M, A, O] = {
+    new Protocol[S, M, A, O] {
+      def id = p.id
+      def order = p.order
+      override def check(topology: Topology) = p.check(topology)
+      def init(ctx: NodeCtx, attrs: NodeAttrs) = {
+        p.init(ctx, attrs)
+      }
+      def actions(ctx: NodeCtx, state: S) = p.actions(ctx, state)
+      def onAction(ctx: NodeCtx, state: S, action: A) = {
+        p.onAction(ctx, state, action)
+      }
+      def onMessage(ctx: NodeCtx, state: S, from: NodeId, msg: M) = {
+        sys.error(s"a test bug in node ${ctx.self.value}")
+      }
+    }
+  }
+
+  test("a node actor that stops during the run gives Failed with ActorStopped, and no hang") {
+    val a = Registry.echo
+    val spec = specOf(a, 1)
+    // The first Deliver of the seeded run goes to this node, and its onMessage throws.
+    val first = a.simulate(spec).value.choices.collectFirst { case Choice.Deliver(id) => id.to }
+    val (guardian, probe) = startWith(crashing(a.protocol), spec, "run-crash")
+    assert(failed(probe) == RunGuardian.EngineError.ActorStopped(RunGuardian.nodeName(first.value)))
+    probe.expectTerminated(guardian, guard)
+  }
+
+  test("the guardian refuses a world that has no context for a node") {
+    val a = Registry.echo
+    val world = Simulator.start(a.protocol, specOf(a, 1)).value.last.value
+    assert(RunGuardian.wiringOf(world) == Right(()))
+    val node = world.ctxs.keySet.headOption.value
+    val broken = world.copy(ctxs = world.ctxs - node)
+    assert(
+      RunGuardian.wiringOf(broken) == Left(
+        RunGuardian.EngineError.Unwired(s"no context for the nodes ${node.value}")
+      )
+    )
   }
 }

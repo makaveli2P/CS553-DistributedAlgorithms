@@ -37,6 +37,16 @@ object Main {
     * messages, and the timeout is only a failure guard.
     */
   private def record(args: RecordArgs): Unit = {
+    // Record.plan is pure. Check the algorithm and the preset before Akka starts.
+    Record.plan(args) match {
+      case Left(error) =>
+        System.err.println(s"error: $error")
+        sys.exit(1)
+      case Right(_) => recordChecked(args)
+    }
+  }
+
+  private def recordChecked(args: RecordArgs): Unit = {
     val system = ActorSystem(SpawnProtocol(), "cs553")
     given Timeout = Timeout(recordGuard)
     given ExecutionContext = system.executionContext

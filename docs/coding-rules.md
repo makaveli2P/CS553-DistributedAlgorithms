@@ -31,7 +31,7 @@
 22. Do not use timers, `ask`, `Future` or `pipeToSelf` in node actors. Reason: they break deterministic replay.
 23. Make internal messages `private`. Name reply refs `replyTo`. Reason: this is the Akka style guide.
 24. Pass dependencies through factory parameters. Do not use global objects that have state. Reason: each run is one isolated subtree.
-25. Do not use `Thread.sleep`, `Await`, polling or busy-waits. Detect completion with protocol messages. Reason: sleeps hide races and slow the tests.
+25. Do not use `Thread.sleep`, `Await`, polling or busy-waits. Detect completion with protocol messages. Reason: sleeps hide races and slow the tests. Exception: the `main` method of a program can use `Await` for its one `Future` (ADR-0007).
 
 ## Testing
 26. Make each test assert a result (a decision, a tree, a cut, a verdict). Reason: a test that only waits for a message proves nothing.

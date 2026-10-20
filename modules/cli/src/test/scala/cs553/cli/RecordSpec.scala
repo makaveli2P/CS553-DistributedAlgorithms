@@ -1,5 +1,6 @@
 package cs553.cli
 
+import akka.actor.testkit.typed.scaladsl.TestProbe
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.SpawnProtocol
 import akka.util.Timeout
@@ -18,7 +19,6 @@ import org.scalatest.EitherValues
 import org.scalatest.OptionValues
 import org.scalatest.funsuite.AnyFunSuite
 
-import scala.concurrent.Await
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.*
 
@@ -86,8 +86,10 @@ final class RecordSpec
     given Timeout = Timeout(guard)
     given ExecutionContext = system.executionContext
     val args = record("record --engine mediated --alg chang-roberts --preset ring-6 --seed 7")
-    // The test thread is outside the actor system, so it can wait for the Future (a guard only).
-    val report = Await.result(Record.run(system, args), guard).value
+    // The probe gets the result of the Future. The guard is a failure guard only (coding rule 25).
+    val probe = TestProbe[Either[String, Report]]()(using system)
+    Record.run(system, args).foreach(probe.ref ! _)
+    val report = probe.receiveMessage(guard).value
     assert(report.text.headOption.exists(_.contains("in the mediated Akka engine")))
     assert(report.text.count(_.contains("DECIDES: it is the leader")) == 1)
     val run = RunJson.read[CrState, CrMsg, CrAction, CrOutput](report.json).value

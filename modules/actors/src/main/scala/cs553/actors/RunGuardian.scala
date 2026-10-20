@@ -30,8 +30,9 @@ import cs553.core.world.World
   * <guardian>/channel-3-5
   * }}}
   *
-  * When the Controller stops after its reply, the guardian stops, and Akka stops all children. So
-  * no actor of the run stays after `Finished`.
+  * The Controller sends its result to the guardian. The guardian forwards it to `replyTo` and
+  * stops, and Akka stops all children. So no actor of the run stays after `Finished`. If a child
+  * stops before the result, the guardian replies `Failed(ActorStopped(name))` and stops.
   */
 object RunGuardian {
 
@@ -63,6 +64,11 @@ object RunGuardian {
 
     /** An actor of the run stopped before the end of the run. */
     case ActorStopped(name: String)
+
+    /** The world does not give one node actor for each process and one channel actor for each edge,
+      * or a node has no channel ref for a receiver.
+      */
+    case Unwired(detail: String)
   }
 
   /** The name of the actor of `node`, for example `node-3`. */
@@ -73,40 +79,80 @@ object RunGuardian {
 
   val controllerName: String = "controller"
 
-  /** A guardian that runs `spec` with `p` and sends the result to `replyTo`. */
+  /** A guardian that runs `spec` with `p` and sends the result to `replyTo`.
+    *
+    * The Controller sends its result to the guardian, and the guardian forwards it. So `replyTo`
+    * gets exactly one reply, also when an actor of the run stops because of an exception.
+    */
   def apply[S, M, A, O](
       p: Protocol[S, M, A, O],
       spec: RunSpec[A],
       replyTo: ActorRef[Result[S, M, A, O]]
   ): Behavior[Nothing] = {
-    Behaviors.setup[Nothing] { context =>
-      Simulator.start(p, spec).map(_.last) match {
-        case Left(error) =>
-          replyTo ! Failed(EngineError.BadSpec(error))
-          Behaviors.stopped
-        case Right(None) =>
-          replyTo ! Failed(EngineError.UnexpectedReport("the Simulator gave no initial world"))
-          Behaviors.stopped
-        case Right(Some(world)) => spawnRun(context, p, spec, world, replyTo)
+    Behaviors
+      .setup[Result[S, M, A, O]] { context =>
+        val checked = for {
+          world <- Simulator.start(p, spec).map(_.last).left.map(EngineError.BadSpec(_))
+          initial <- world.toRight(EngineError.UnexpectedReport("the Simulator gave no world"))
+          _ <- wiringOf(initial)
+        } yield initial
+        checked match {
+          case Left(error) =>
+            replyTo ! Failed(error)
+            Behaviors.stopped
+          case Right(world) => spawnRun(context, p, spec, world, replyTo)
+        }
       }
+      .narrow[Nothing]
+  }
+
+  /** An error when the world does not have a context for each node, a node at each end of each
+    * edge, and an edge for each out-neighbour. Then the guardian does not spawn the actors, because
+    * the run would wait for a report that never comes.
+    */
+  private[actors] def wiringOf[S, M](world: World[S, M]): Either[EngineError[Nothing], Unit] = {
+    val nodes = world.states.keySet
+    val edges = world.topology.edges
+    val missingCtx = nodes.toList.filterNot(world.ctxs.contains).map(_.value.toString)
+    val looseEdges = edges.toList.filterNot(e => nodes.contains(e.from) && nodes.contains(e.to))
+    val missingEdges = world.ctxs.toList.flatMap { case (node, ctx) =>
+      ctx.out.toList.map(to => Edge(node, to)).filterNot(edges.contains)
     }
+    def show(edges: List[Edge]): String = {
+      edges.map(e => s"${e.from.value} -> ${e.to.value}").sorted.mkString(", ")
+    }
+    if missingCtx.nonEmpty then {
+      Left(EngineError.Unwired(s"no context for the nodes ${missingCtx.sorted.mkString(", ")}"))
+    } else if looseEdges.nonEmpty then {
+      Left(EngineError.Unwired(s"no node at an end of the edges ${show(looseEdges)}"))
+    } else if missingEdges.nonEmpty then {
+      Left(EngineError.Unwired(s"no edge for the out-neighbours ${show(missingEdges)}"))
+    } else { Right(()) }
   }
 
   private def spawnRun[S, M, A, O](
-      context: ActorContext[Nothing],
+      context: ActorContext[Result[S, M, A, O]],
       p: Protocol[S, M, A, O],
       spec: RunSpec[A],
       world: World[S, M],
       replyTo: ActorRef[Result[S, M, A, O]]
-  ): Behavior[Nothing] = {
+  ): Behavior[Result[S, M, A, O]] = {
     val edges = world.topology.edges.toList
     val started = TraceEvent.Started(spec, Engine.AkkaMediated, world.states)
     val controller = context.spawn(
-      Controller[S, M, A, O](spec, world.order, world.states.keySet, edges.toSet, started, replyTo),
+      Controller[S, M, A, O](
+        spec,
+        world.order,
+        world.states.keySet,
+        edges.toSet,
+        started,
+        context.self
+      ),
       controllerName
     )
-    val nodes = world.states.toList.flatMap { case (node, state) =>
-      world.ctxs.get(node).toList.map { ctx =>
+    // wiringOf checked that each node has a context and each edge has a node at each end.
+    val nodes = world.ctxs.toList.flatMap { case (node, ctx) =>
+      world.states.get(node).toList.map { state =>
         node -> context.spawn(NodeAdapter(p, ctx, state, controller), nodeName(node))
       }
     }.toMap
@@ -128,11 +174,17 @@ object RunGuardian {
     context.watch(controller)
     nodes.values.foreach(context.watch)
     channels.values.foreach(context.watch)
-    Behaviors.receiveSignal[Nothing] { case (_, Terminated(ref)) =>
-      if ref != controller then {
-        replyTo ! Failed(EngineError.ActorStopped(ref.path.name))
+    // Locally, Akka gives the Terminated of the Controller after each message that the Controller
+    // sent before it stopped. So a Terminated that comes first means that the Controller sent no
+    // result.
+    Behaviors
+      .receiveMessage[Result[S, M, A, O]] { result =>
+        replyTo ! result
+        Behaviors.stopped
       }
-      Behaviors.stopped
-    }
+      .receiveSignal { case (_, Terminated(ref)) =>
+        replyTo ! Failed(EngineError.ActorStopped(ref.path.name))
+        Behaviors.stopped
+      }
   }
 }

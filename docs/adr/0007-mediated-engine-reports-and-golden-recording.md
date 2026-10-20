@@ -20,6 +20,8 @@ M3 also writes recorded Akka traces for the golden cases. The list of golden cas
 - The node calls `Effects.of` itself. Its `Handled` report holds the events of the step (`Stepped` or `Rejected`, `Sent`, `Decided`), the sent ids and the new actions. The events hold the cause, the new state and the decision of the design.
 - The Controller gets the legal choices from `World.enabledOf` and the stop decision from `Simulator.stopWhen`. Both are new pure functions in `core`. `World.enabled` and `Simulator.stopAt` call them, so each engine uses one rule.
 - The `cli` tests depend on the `core` tests (`coreJVM % "test->test"`). `cs553.cli.GoldenRecord`, in the `cli` test code, records each golden case with the `record` command. `sbt goldenPromote` runs it after `GoldenPromote` when `AKKA_REPO_TOKEN` is set.
+- The Controller sends its result to the `RunGuardian`, not to the caller. The guardian forwards it and stops. If a child actor stops before the result, the guardian replies `Failed(ActorStopped(name))`. So the caller always gets one reply. The guardian also checks the wiring of the world before it spawns the actors.
+- The `main` method of a program is the one edge where `Await` is permitted (an exception to coding rule 25). `cs553.cli.Main` (the `record` command) and `cs553.cli.GoldenRecord` wait with `Await` for the one `Future` of the run, because the JVM must not exit before the run ends. The timeout is a failure guard only. No actor and no test uses `Await`. A test sends the result of the `Future` to a `TestProbe` and expects it there.
 - The `core` `GoldenSpec` checks that each committed `*-akka-mediated-*.json` file is equal to the Simulator golden trace, except for the engine field. This check needs no token.
 
 ## Consequences

@@ -12,7 +12,6 @@ import cs553.core.trace.Outcome
 import cs553.core.trace.Policy
 import cs553.core.trace.Run
 import cs553.core.trace.RunSpec
-import cs553.core.trace.Stamp
 import cs553.core.trace.TraceEvent
 import cs553.core.world.Simulator
 import cs553.core.world.World
@@ -33,9 +32,10 @@ import scala.collection.immutable.SortedMap
   *   1. waits for the `Handled` report and one `Enqueued` for each sent id.
   *
   * Akka does not order messages from two different senders, so an `Enqueued` can come before or
-  * after `Handled`. Only one step runs at a time, so the choices alone define the trace.
+  * after `Handled`. Only one step runs at a time, so the choices alone define the trace. The
+  * Controller is internal to the engine: only `RunGuardian` spawns it.
   */
-object Controller {
+private[actors] object Controller {
 
   /** All messages that the Controller gets: the reports of the channels and the nodes, and `Wired`
     * from the guardian.
@@ -108,12 +108,20 @@ object Controller {
     def buffers(id: EnvelopeId): Boolean = queues.get(id.channel).exists(_.contains(id))
   }
 
-  /** The reports of the step that runs now. */
+  /** The reports of the step that runs now. `node` is the node that must report `Handled`: the
+    * target of the `Act`, or the receiver of the released envelope.
+    */
   private final case class Pending[S, M, A, O](
+      node: NodeId,
       handled: Option[(List[TraceEvent[S, M, A, O]], List[EnvelopeId])],
       enqueued: Set[EnvelopeId]
   ) {
     def complete: Boolean = handled.exists { case (_, sent) => sent.forall(enqueued.contains) }
+
+    /** The enqueued ids that the node did not send in this step. */
+    def unexpected: Set[EnvelopeId] = {
+      handled.fold(Set.empty[EnvelopeId]) { case (_, sent) => enqueued -- sent }
+    }
   }
 
   /** Waits for `Wired` and for `Ready` from each node in `waiting`. */
@@ -131,7 +139,8 @@ object Controller {
           wiring(state.copy(actions = state.actions.updated(node, actions)), waiting - node, wired)
         case NodeAdapter.Report.Handled(node, _, _, _) =>
           fail(state, RunGuardian.EngineError.UnexpectedReport(s"Handled from node $node"))
-        case Channel.Report.Enqueued(id) =>
+        case NodeAdapter.Report.Unwired(node, ids) => unwired(state, node, ids)
+        case Channel.Report.Enqueued(id)           =>
           fail(state, RunGuardian.EngineError.UnexpectedReport(s"Enqueued($id)"))
         case Channel.Report.Refused(id, reason) =>
           fail(state, RunGuardian.EngineError.Refused(id, reason))
@@ -156,22 +165,26 @@ object Controller {
                 if !enabled.contains(choice) then { fail(current, bad) }
                 else {
                   send(current, current.channels.get(id.channel), Channel.Release[M](id, step)) {
-                    stepping(current.dequeue(id), Pending(None, Set.empty))
+                    stepping(current.dequeue(id), Pending(id.to, None, Set.empty))
                   }
                 }
               case Choice.Fire(node, action) =>
                 if !enabled.contains(choice) then { fail(current, bad) }
                 else {
                   send(current, current.nodes.get(node), NodeAdapter.Act[M, A](action, step)) {
-                    stepping(current, Pending(None, Set.empty))
+                    stepping(current, Pending(node, None, Set.empty))
                   }
                 }
               case Choice.Drop(id) =>
                 current.channels.get(id.channel).filter(_ => current.buffers(id)) match {
                   case None          => fail(current, bad)
                   case Some(channel) =>
+                    // A Drop needs no report. Akka keeps the order of the messages from one
+                    // sender to one receiver, so the channel removes the envelope before it gets
+                    // the next Release from the Controller. If the channel refuses the Drop, its
+                    // Refused report stops the run in the next step.
                     channel ! Channel.Drop[M](id)
-                    val dropped = TraceEvent.Dropped(Stamp(step, 0, 0), id)
+                    val dropped = World.droppedAt(step, id)
                     proceed(current.dequeue(id).copy(step = step, trace = current.trace :+ dropped))
                 }
             }
@@ -215,13 +228,19 @@ object Controller {
       state: State[S, M, A, O],
       pending: Pending[S, M, A, O]
   ): Behavior[Command[S, M, A, O]] = {
-    if pending.complete then {
+    if pending.complete && pending.unexpected.nonEmpty then {
+      val ids = pending.unexpected.toList.sorted.mkString(", ")
+      fail(state, RunGuardian.EngineError.UnexpectedReport(s"Enqueued of ids not sent: $ids"))
+    } else if pending.complete then {
       val events = pending.handled.fold(List.empty[TraceEvent[S, M, A, O]])(_._1)
       proceed(state.copy(step = state.step + 1, trace = state.trace ++ events))
     } else {
       Behaviors.receiveMessage {
         case Channel.Report.Enqueued(id) =>
           stepping(state.enqueue(id), pending.copy(enqueued = pending.enqueued + id))
+        case NodeAdapter.Report.Handled(node, _, _, _) if node != pending.node =>
+          val detail = s"Handled from node $node, not from node ${pending.node}"
+          fail(state, RunGuardian.EngineError.UnexpectedReport(detail))
         case NodeAdapter.Report.Handled(node, events, sent, actions) =>
           pending.handled match {
             case Some(_) =>
@@ -234,11 +253,23 @@ object Controller {
           }
         case Channel.Report.Refused(id, reason) =>
           fail(state, RunGuardian.EngineError.Refused(id, reason))
-        case NodeAdapter.Report.Ready(node, _) =>
+        case NodeAdapter.Report.Unwired(node, ids) => unwired(state, node, ids)
+        case NodeAdapter.Report.Ready(node, _)     =>
           fail(state, RunGuardian.EngineError.UnexpectedReport(s"Ready from node $node"))
         case Wired(_, _) => fail(state, RunGuardian.EngineError.UnexpectedReport("a second Wired"))
       }
     }
+  }
+
+  private def unwired[S, M, A, O](
+      state: State[S, M, A, O],
+      node: NodeId,
+      ids: List[EnvelopeId]
+  ): Behavior[Command[S, M, A, O]] = {
+    fail(
+      state,
+      RunGuardian.EngineError.Unwired(s"node $node has no channel for ${ids.mkString(", ")}")
+    )
   }
 
   private def finish[S, M, A, O](

@@ -137,7 +137,11 @@ lazy val cli = project
   .settings(akkaTokenGate)
   .settings(
     name := "cs553-cli",
-    libraryDependencies ++= Seq(Dependencies.logback, Dependencies.scalatest.value),
+    libraryDependencies ++= Seq(
+      Dependencies.logback,
+      Dependencies.akkaActorTestkitTyped,
+      Dependencies.scalatest.value
+    ),
     run / fork := true,
     // Paths on the command line are relative to the repository root.
     run / baseDirectory := (LocalRootProject / baseDirectory).value,

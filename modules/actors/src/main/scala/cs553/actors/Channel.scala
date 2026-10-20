@@ -25,14 +25,15 @@ object Channel {
   /** Buffer this envelope. `item` holds the Lamport time of the send. */
   final case class Put[M](item: Buffered[M]) extends In[M]
 
-  /** The messages that only the Controller sends. */
-  sealed trait Control[M] extends Command[M]
+  /** The messages that only the Controller sends. They are internal to the engine (coding rule 23).
+    */
+  private[actors] sealed trait Control[M] extends Command[M]
 
   /** Give the envelope `id` to the receiver for the global step `step`. */
-  final case class Release[M](id: EnvelopeId, step: Int) extends Control[M]
+  private[actors] final case class Release[M](id: EnvelopeId, step: Int) extends Control[M]
 
   /** Remove the envelope `id`. The receiver never gets it. */
-  final case class Drop[M](id: EnvelopeId) extends Control[M]
+  private[actors] final case class Drop[M](id: EnvelopeId) extends Control[M]
 
   /** What a channel tells the Controller. */
   enum Report {

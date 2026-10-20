@@ -32,8 +32,10 @@ object NodeAdapter {
   /** A channel gives the node this envelope for the global step `step`. */
   final case class Deliver[M](item: Buffered[M], step: Int) extends Command[M, Nothing]
 
-  /** The Controller tells the node to do `action` in the global step `step`. */
-  final case class Act[M, A](action: A, step: Int) extends Command[M, A]
+  /** The Controller tells the node to do `action` in the global step `step`. Only the Controller
+    * sends it (coding rule 23).
+    */
+  private[actors] final case class Act[M, A](action: A, step: Int) extends Command[M, A]
 
   /** The guardian gives the node the refs of its outgoing channels, after it spawned them. */
   private[actors] final case class Wire[M](out: Map[NodeId, ActorRef[Channel.In[M]]])
@@ -57,6 +59,11 @@ object NodeAdapter {
         sent: List[EnvelopeId],
         actions: List[A]
     )
+
+    /** The node has no channel ref for the receivers of `ids`, so it did not put them. The node
+      * sends this report before `Handled`.
+      */
+    case Unwired(node: NodeId, ids: List[EnvelopeId])
   }
 
   /** A node with the initial state `initial`. It waits for `Wire`, and then reports `Ready`. */
@@ -115,7 +122,17 @@ object NodeAdapter {
   ): Behavior[Command[M, A]] = {
     val ctx = setup.ctx
     val effects = Effects.of(step, ctx, cause, clock, e => nextSeq.getOrElse(e, 0), result)
-    effects.sent.foreach(item => setup.out.get(item.env.id.to).foreach(_ ! Channel.Put(item)))
+    val unwired = effects.sent.flatMap { item =>
+      setup.out.get(item.env.id.to) match {
+        case Some(channel) =>
+          channel ! Channel.Put(item)
+          Nil
+        case None => List(item.env.id)
+      }
+    }
+    // The guardian wires a channel for each out-neighbour, so this list is empty. If it is not
+    // empty, the Controller stops the run: it must not wait for an `Enqueued` that never comes.
+    if unwired.nonEmpty then { setup.reportTo ! Report.Unwired(ctx.self, unwired) }
     val seqs = effects.sent.foldLeft(nextSeq) { (acc, item) =>
       acc.updated(item.env.id.channel, item.env.id.seq + 1)
     }

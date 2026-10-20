@@ -179,9 +179,16 @@ object World {
       case Choice.Drop(id) =>
         find(w, id).map { _ =>
           val step = w.step + 1
-          (remove(w, id).copy(step = step), List(TraceEvent.Dropped(Stamp(step, 0, 0), id)))
+          (remove(w, id).copy(step = step), List(droppedAt(step, id)))
         }
     }
+  }
+
+  /** The `Dropped` event of the envelope `id` in the global step `step`. The mediated Akka
+    * Controller calls this function too, so both engines write the same event.
+    */
+  def droppedAt(step: Int, id: EnvelopeId): TraceEvent[Nothing, Nothing, Nothing, Nothing] = {
+    TraceEvent.Dropped(Stamp(step, 0, 0), id)
   }
 
   private def find[S, M](w: World[S, M], id: EnvelopeId): Either[ChoiceError, Buffered[M]] = {
