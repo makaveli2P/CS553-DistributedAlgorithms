@@ -19,6 +19,7 @@ import cs553.core.topology.Role
 import cs553.core.topology.Topology
 import cs553.core.topology.TopologyError
 import cs553.core.trace.Inspect
+import cs553.core.trace.Overlay
 import io.circe.Codec
 
 /** The messages of Chang-Roberts. */
@@ -304,6 +305,8 @@ object ChangRoberts {
 }
 
 object CrState {
+  given Overlay[CrState] = Overlay.none
+
   given Inspect[CrState] = new Inspect[CrState] {
     def label(s: CrState): String = s match {
       case CrState.Asleep(uid)         => s"asleep ${uid.value}"

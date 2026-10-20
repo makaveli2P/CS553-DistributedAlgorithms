@@ -12,6 +12,7 @@ import cs553.core.protocol.Protocol
 import cs553.core.rng.Seed
 import cs553.core.topology.Preset
 import cs553.core.trace.Inspect
+import cs553.core.trace.Overlay
 import cs553.core.trace.Policy
 import cs553.core.trace.Run
 import cs553.core.trace.RunSpec
@@ -21,8 +22,8 @@ import cs553.core.world.Simulation
 import cs553.core.world.Simulator
 import io.circe.Codec
 
-/** One algorithm with all that the UI needs: the protocol, the `Inspect` givens for the render
-  * edge, the codecs for traces and links, and the topology presets.
+/** One algorithm with all that the UI needs: the protocol, the `Inspect` and `Overlay` givens for
+  * the render edge, the codecs for traces and links, and the topology presets.
   *
   * The UI works with `AnyAlgorithm`, which hides the four type parameters.
   */
@@ -37,6 +38,7 @@ final case class Algorithm[S, M, A, O](
     val inspectMsg: Inspect[M],
     val inspectAction: Inspect[A],
     val inspectOutput: Inspect[O],
+    val overlay: Overlay[S],
     val codecState: Codec[S],
     val codecMsg: Codec[M],
     val codecAction: Codec[A],

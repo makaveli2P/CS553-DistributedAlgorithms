@@ -16,8 +16,11 @@ import cs553.core.topology.Role
 import cs553.core.topology.Topology
 import cs553.core.topology.TopologyError
 import cs553.core.trace.Inspect
+import cs553.core.trace.Mark
+import cs553.core.trace.Overlay
 import io.circe.Codec
 
+import scala.collection.immutable.SortedMap
 import scala.collection.immutable.SortedSet
 
 /** The one message of Echo. */
@@ -309,6 +312,13 @@ object EchoState {
       "received" -> s.received.toString,
       "expected" -> s.expected.toString
     )
+  }
+
+  /** The parent edges. Together they grow into the spanning tree of the wave. */
+  given Overlay[EchoState] = new Overlay[EchoState] {
+    def marks(states: SortedMap[NodeId, EchoState]): List[Mark] = {
+      states.toList.flatMap { case (node, s) => s.parent.map(Mark.TreeEdge(node, _)) }
+    }
   }
 }
 

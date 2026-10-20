@@ -157,7 +157,8 @@ lazy val web = project
     },
     libraryDependencies ++= Seq(
       Dependencies.laminar.value,
-      Dependencies.scalajsDom.value
+      Dependencies.scalajsDom.value,
+      Dependencies.scalatest.value
     )
   )
 

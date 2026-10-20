@@ -1,9 +1,16 @@
 package cs553.core.registry
 
+import cs553.core.algorithms.election.CrState
+import cs553.core.algorithms.wave.EchoState
+import cs553.core.ids.NodeId
 import cs553.core.rng.Seed
+import cs553.core.topology.Edge
+import cs553.core.trace.Mark
 import cs553.core.trace.Outcome
 import cs553.core.trace.TraceEvent
 import org.scalatest.funsuite.AnyFunSuite
+
+import scala.collection.immutable.SortedMap
 
 final class RegistrySpec extends AnyFunSuite {
 
@@ -66,6 +73,32 @@ final class RegistrySpec extends AnyFunSuite {
         result.foreach { simulation =>
           assert(alg.readTrace(alg.writeTrace(simulation.run)) == Right(simulation.run))
         }
+      }
+    }
+  }
+
+  test(
+    "the Echo overlay marks a spanning tree at the end of a run, and Chang-Roberts has no marks"
+  ) {
+    Registry.echo.presets.foreach { preset =>
+      val result = Registry.echo.simulate(Registry.echo.spec(preset, Seed(3)))
+      assert(result.isRight, preset.name)
+      result.foreach { simulation =>
+        val states = simulation.last.map(_.states).getOrElse(SortedMap.empty[NodeId, EchoState])
+        val marks = Registry.echo.overlay.marks(states)
+        val nodes = preset.topology.nodes
+        assert(marks.size == nodes.size - 1, preset.name)
+        val children = marks.collect { case Mark.TreeEdge(child, parent) =>
+          assert(preset.topology.edges.contains(Edge(child, parent)), preset.name)
+          child
+        }
+        assert(children.distinct.size == children.size, preset.name)
+      }
+    }
+    Registry.changRoberts.defaultSpec.map(Registry.changRoberts.simulate).foreach { result =>
+      result.foreach { simulation =>
+        val states = simulation.last.map(_.states).getOrElse(SortedMap.empty[NodeId, CrState])
+        assert(Registry.changRoberts.overlay.marks(states) == Nil)
       }
     }
   }
