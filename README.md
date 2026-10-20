@@ -9,19 +9,17 @@ This project teaches eight distributed algorithms from Wan Fokkink, *Distributed
 
 Each algorithm is one pure Scala 3 model. The same model runs in three engines: a simulator in the browser, a mediated Akka Typed engine and a free-run Akka Typed engine. The browser visualizer shows the channels, the mailboxes and the steps of each run.
 
-## Status
+## Features
 
-This branch is a rewrite of the college project. The original code is at the tag `college-original`.
+- Eight algorithms: Chandy-Lamport, Lai-Yang, Echo, Tarry, Tree, Bracha-Toueg, Chang-Roberts and Franklin.
+- A guided lesson for each algorithm, with a question that the learner answers by clicking a node.
+- A space-time view that shows each node as a line and each message as an arrow.
+- A sandbox in the browser, with mailboxes, overlays, a timeline and an inspector.
+- Two real Akka Typed engines: a mediated engine and a free-run engine. The sandbox replays recorded runs of both.
 
-Milestones M0 to M4 are done:
+**Live site:** https://makaveli2p.github.io/CS553-DistributedAlgorithms/
 
-- M0: the build, the CI, the coding rules and the ADRs.
-- M1: the pure model, the Simulator, Echo and Chang-Roberts.
-- M2: the web sandbox for Echo and Chang-Roberts.
-- M3: the mediated Akka engine, with channel actors and a Controller, and the CLI command `record`. For each algorithm, preset, channel order and 20 seeds, a test shows that the Akka trace is equal to the Simulator trace.
-- M4: the other six algorithms: Tarry, Tree, Franklin, Chandy-Lamport, Lai-Yang and Bracha-Toueg. Each algorithm has property tests, regression tests for the college bugs, presets, golden traces, a sandbox and the Akka conformance tests. The design put Chandy-Lamport, Lai-Yang and Bracha-Toueg in M5. They are done now, together with their overlays and invariant lines.
-
-Milestones M6 and M7 add the space-time view, the lessons and the free-run engine. The descriptions of the algorithms are in [docs/algorithms](docs/algorithms).
+This branch is a rewrite of the college project. The original code is at the tag `college-original`. The descriptions of the algorithms are in [docs/algorithms](docs/algorithms).
 
 ## Modules
 
@@ -38,6 +36,7 @@ You need JDK 21, sbt and Node.js. [CONTRIBUTING.md](CONTRIBUTING.md) gives the f
 
 ```sh
 sbt coreJVM/test coreJS/test          # test the core
+sbt "cli/run record --engine free --alg echo --preset inputEcho --out echo-free.json"   # record a free-run Akka run
 cd modules/web && npm install && npm run dev   # open the web page
 sbt "cli/run simulate --alg chang-roberts --ring 6 --seed 7"   # print a trace (needs AKKA_REPO_TOKEN)
 sbt "cli/run record --engine mediated --alg echo --preset inputEcho --seed 7 --out echo.json"   # record an Akka run
@@ -53,4 +52,4 @@ sbt "cli/run record --engine mediated --alg echo --preset inputEcho --seed 7 --o
 
 ## Credits
 
-The CS553 team wrote the college project. The test topologies come from [NetGameSim](https://github.com/0x1DOCD00D/NetGameSim) by Prof. Mark Grechanik.
+The college team wrote the college project. The test topologies come from [NetGameSim](https://github.com/0x1DOCD00D/NetGameSim) by Prof. Mark Grechanik.
