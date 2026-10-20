@@ -30,7 +30,8 @@ Run these commands from the repository root.
 | Test the core on the JVM and in JS | `sbt coreJVM/test coreJS/test` |
 | Link the web module | `sbt web/fastLinkJS` |
 | Test the Akka modules (token) | `sbt actors/test` |
-| Run the CLI (token) | `sbt cli/run` |
+| Show the CLI usage (token) | `sbt cli/run` |
+| Simulate a run and write its trace (token) | `sbt "cli/run simulate --alg echo --topology fixtures/topologies/inputEcho.dot --initiator 1 --seed 7 --out trace.json"` |
 | Run all checks before a commit | `sbt scalafmtCheckAll "scalafixAll --check" test` |
 
 For the web page, run these commands in `modules/web`:

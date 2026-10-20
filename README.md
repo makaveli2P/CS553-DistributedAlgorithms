@@ -22,7 +22,7 @@ Milestone M0 is in progress: the build, the CI, the coding rules and the ADRs. M
 | `modules/core` | The pure model, for the JVM and for JS | No |
 | `modules/web` | The Laminar visualizer, built with Vite | No |
 | `modules/actors` | The Akka Typed engines | Yes |
-| `modules/cli` | The command line that records Akka runs | Yes |
+| `modules/cli` | The command line: it simulates a run now, and it records Akka runs in M3 | Yes |
 
 ## How to run
 
@@ -31,7 +31,7 @@ You need JDK 21, sbt and Node.js. [CONTRIBUTING.md](CONTRIBUTING.md) gives the f
 ```sh
 sbt coreJVM/test coreJS/test          # test the core
 cd modules/web && npm install && npm run dev   # open the web page
-sbt cli/run                           # run the CLI (needs AKKA_REPO_TOKEN)
+sbt "cli/run simulate --alg chang-roberts --ring 6 --seed 7"   # print a trace (needs AKKA_REPO_TOKEN)
 ```
 
 ## Documents
