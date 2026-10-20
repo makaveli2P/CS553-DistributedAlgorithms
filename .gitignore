@@ -1,4 +1,17 @@
-*.class
-.idea
+# sbt and Scala
 target/
+.bsp/
+.bloop/
+.metals/
+.scala-build/
+metals.sbt
+*.class
+
+# Node and Vite
+node_modules/
+modules/web/dist/
+
+# Editors and OS
+.idea/
+.vscode/
 .DS_Store

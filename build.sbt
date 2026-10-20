@@ -1,0 +1,107 @@
+import org.scalajs.linker.interface.{ModuleKind, ModuleSplitStyle}
+import org.typelevel.scalacoptions.ScalacOptions
+
+// ---------------------------------------------------------------------------
+// Akka token gating
+//
+// Akka 2.10 resolves only from https://repo.akka.io/<token>/secure.
+// The build adds that resolver only when AKKA_REPO_TOKEN is set.
+// Without the token, the root aggregate excludes `actors` and `cli`, so
+// `core` and `web` build with no Akka account. Do not commit the token.
+// ---------------------------------------------------------------------------
+lazy val akkaRepoToken: Option[String] =
+  sys.env.get("AKKA_REPO_TOKEN").map(_.trim).filter(_.nonEmpty)
+
+lazy val akkaTokenMessage: String =
+  "AKKA_REPO_TOKEN is not set: the build skips the modules `actors` and `cli`. " +
+    "Get a free token at https://account.akka.io/token and export AKKA_REPO_TOKEN to build them."
+
+ThisBuild / organization := "io.github.cs553"
+ThisBuild / scalaVersion := Versions.scala3
+ThisBuild / resolvers ++= akkaRepoToken.toSeq.map { token =>
+  "Akka library repository".at(s"https://repo.akka.io/$token/secure")
+}
+
+// Scalafix for Scala 3 reads SemanticDB, which the compiler writes.
+ThisBuild / semanticdbEnabled := true
+
+Global / onLoad := {
+  val previous = (Global / onLoad).value
+  previous.andThen { state =>
+    if (akkaRepoToken.isEmpty) { state.log.warn(akkaTokenMessage) }
+    state
+  }
+}
+
+// Settings for every module. Compiler flags come only from sbt-tpolecat (coding rule 31).
+lazy val commonSettings = Seq(
+  // Coding rule 12: no implicit conversions.
+  tpolecatExcludeOptions += ScalacOptions.languageImplicitConversions,
+  Test / tpolecatExcludeOptions += ScalacOptions.warnNonUnitStatement
+)
+
+lazy val core = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Full)
+  .in(file("modules/core"))
+  .settings(commonSettings)
+  .settings(
+    name := "cs553-core",
+    libraryDependencies += Dependencies.scalatest.value
+  )
+
+lazy val coreJVM = core.jvm
+lazy val coreJS = core.js
+
+lazy val actors = project
+  .in(file("modules/actors"))
+  .dependsOn(coreJVM)
+  .settings(commonSettings)
+  .settings(
+    name := "cs553-actors",
+    libraryDependencies ++= Seq(
+      Dependencies.akkaActorTyped,
+      Dependencies.akkaActorTestkitTyped,
+      Dependencies.scalatest.value,
+      Dependencies.logback % Test
+    )
+  )
+
+lazy val cli = project
+  .in(file("modules/cli"))
+  .dependsOn(actors)
+  .settings(commonSettings)
+  .settings(
+    name := "cs553-cli",
+    libraryDependencies += Dependencies.logback,
+    run / fork := true
+  )
+
+lazy val web = project
+  .in(file("modules/web"))
+  .enablePlugins(ScalaJSPlugin)
+  .dependsOn(coreJS)
+  .settings(commonSettings)
+  .settings(
+    name := "cs553-web",
+    scalaJSUseMainModuleInitializer := true,
+    // Vite (with @scala-js/vite-plugin-scalajs) loads the linker output as ES modules.
+    scalaJSLinkerConfig ~= {
+      _.withModuleKind(ModuleKind.ESModule)
+        .withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("cs553.web")))
+    },
+    libraryDependencies ++= Seq(
+      Dependencies.laminar.value,
+      Dependencies.scalajsDom.value
+    )
+  )
+
+lazy val tokenFreeModules: Seq[ProjectReference] = Seq(coreJVM, coreJS, web)
+lazy val akkaModules: Seq[ProjectReference] = Seq(actors, cli)
+
+lazy val root = project
+  .in(file("."))
+  .aggregate((tokenFreeModules ++ akkaRepoToken.toSeq.flatMap(_ => akkaModules)): _*)
+  .settings(
+    name := "cs553",
+    publish / skip := true
+  )
