@@ -283,4 +283,40 @@ final class UiSpec extends AnyFunSuite {
     assert(settings.map(_.presets.map(_.title)) == Some(List("Ring of 6", "Ring of 8")))
     assert(settings.flatMap(_.preset) == Some("ring-6"))
   }
+
+  test("the settings are always on the screen, and a node panel opens next to them") {
+    val opened = open("chang-roberts")
+    assert(Ui.screen(opened).map(_.settings.seed) == Some(1L))
+    assert(Ui.screen(opened).flatMap(_.panel) == None)
+    val node = apply(opened, UiEvent.SelectNode(NodeId(0)))
+    assert(Ui.screen(node).flatMap(_.panel).exists(_.isInstanceOf[PanelView.NodeInfo]))
+    assert(Ui.screen(node).map(_.settings) == Ui.screen(opened).map(_.settings))
+    val closed = apply(node, UiEvent.ClosePanel)
+    assert(Ui.screen(closed).flatMap(_.panel) == None)
+    assert(Ui.screen(apply(closed, UiEvent.ChooseSeed(4))).map(_.settings.seed) == Some(4L))
+  }
+
+  test("the Echo thumbnail shows the spanning tree and fills the initiator") {
+    val thumb = Thumbnail.of(Registry.echo)
+    assert(thumb.nonEmpty)
+    thumb.foreach { t =>
+      assert(t.edges.count(_.tree) == t.nodes.size - 1)
+      assert(t.nodes.count(_.first) == 1)
+      assert(t.nodes.forall(n => math.abs(n.at.x) < t.box.width / 2))
+    }
+  }
+
+  test("the Chang-Roberts thumbnail shows the ring with only the leader filled") {
+    val thumb = Thumbnail.of(Registry.changRoberts)
+    assert(thumb.map(_.nodes.size) == Some(6))
+    assert(thumb.map(_.edges.size) == Some(6))
+    assert(thumb.map(_.nodes.count(_.first)) == Some(1))
+    assert(thumb.exists(_.edges.forall(!_.tree)))
+    // In the default ring the leader has the largest uid, 6, at node 2.
+    val leader = thumb.flatMap(t => t.nodes.find(_.first))
+    val ring = Registry.changRoberts.defaultSpec.map(spec =>
+      Layout.ring(spec.topology, Thumbnail.rx, Thumbnail.ry)
+    )
+    assert(leader.map(_.at) == ring.flatMap(_.get(NodeId(2))))
+  }
 }

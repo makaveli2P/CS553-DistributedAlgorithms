@@ -3,17 +3,27 @@ package cs553.web
 import com.raquo.laminar.api.L.*
 import cs553.core.protocol.ChannelOrder
 
-/** The side panel: a node, an envelope or the settings. It opens on a click and is closed by
-  * default.
+/** The side column: the settings, which are always visible, and the inspector of a node or an
+  * envelope, which opens on a click and is closed by default.
   */
 object Panels {
 
-  /** The open panel, as a child of the stage. The stage gives it a column next to the canvas. */
+  /** The open inspector, or nothing. */
   def render(
       panel: Signal[Option[PanelView]],
       dispatch: Observer[UiEvent]
   ): Modifier[HtmlElement] = {
-    child.maybe <-- panel.map(_.map(view => asideTag(cls("panel"), content(view, dispatch))))
+    child.maybe <-- panel.map(_.map(view => sectionTag(cls("panel"), content(view, dispatch))))
+  }
+
+  /** The settings card. A change starts a new run, so the card renders again with the new run. */
+  def settings(
+      settings: Signal[SettingsView],
+      dispatch: Observer[UiEvent]
+  ): Modifier[HtmlElement] = {
+    child <-- settings.distinct.map(view =>
+      sectionTag(cls("panel", "settings"), fields(view, dispatch))
+    )
   }
 
   private def header(title: String, dispatch: Observer[UiEvent]): HtmlElement = {
@@ -60,55 +70,55 @@ object Panels {
                   )
                 )
               } else { Nil })
-      case PanelView.SettingsInfo(settings) =>
-        List(
-          header("Settings", dispatch),
-          p("A change starts a new run."),
-          label(
-            cls("field"),
-            span("Topology"),
-            select(
-              settings.presets.map(choice =>
-                option(
-                  value(choice.name),
-                  choice.title,
-                  selected(settings.preset.contains(choice.name))
-                )
-              ),
-              onChange.mapToValue.map(UiEvent.ChoosePreset(_)) --> dispatch
-            )
-          ),
-          label(
-            cls("field"),
-            span("Seed"),
-            input(
-              typ("number"),
-              minAttr("0"),
-              stepAttr("1"),
-              defaultValue(settings.seed.toString),
-              // A value that is not a whole number from 0 goes back to the seed of the run.
-              inContext { el =>
-                onChange.mapToValue --> { text =>
-                  text.trim.toLongOption.filter(_ >= 0) match {
-                    case Some(seed) => dispatch.onNext(UiEvent.ChooseSeed(seed))
-                    case None       => el.ref.value = settings.seed.toString
-                  }
-                }
-              }
-            )
-          ),
-          div(
-            cls("field"),
-            span("Channel order"),
-            div(
-              cls("choice-row"),
-              orderOption("FIFO", ChannelOrder.Fifo, settings, dispatch),
-              orderOption("Any order", ChannelOrder.AnyOrder, settings, dispatch)
-            ),
-            settings.orderLock.map(reason => p(cls("hint"), reason))
-          )
-        )
     }
+
+  private def fields(settings: SettingsView, dispatch: Observer[UiEvent]): List[HtmlElement] =
+    List(
+      label(
+        cls("field"),
+        span("Topology"),
+        select(
+          settings.presets.map(choice =>
+            option(
+              value(choice.name),
+              choice.title,
+              selected(settings.preset.contains(choice.name))
+            )
+          ),
+          onChange.mapToValue.map(UiEvent.ChoosePreset(_)) --> dispatch
+        )
+      ),
+      label(
+        cls("field"),
+        span("Seed"),
+        input(
+          typ("number"),
+          minAttr("0"),
+          stepAttr("1"),
+          defaultValue(settings.seed.toString),
+          // A value that is not a whole number from 0 goes back to the seed of the run.
+          inContext { el =>
+            onChange.mapToValue --> { text =>
+              text.trim.toLongOption.filter(_ >= 0) match {
+                case Some(seed) => dispatch.onNext(UiEvent.ChooseSeed(seed))
+                case None       => el.ref.value = settings.seed.toString
+              }
+            }
+          }
+        )
+      ),
+      div(
+        cls("field"),
+        span("Channel order"),
+        div(
+          cls("choice-row"),
+          orderOption("FIFO", ChannelOrder.Fifo, settings, dispatch),
+          orderOption("Any order", ChannelOrder.AnyOrder, settings, dispatch)
+        ),
+        settings.orderLock.map(reason => p(cls("hint"), reason))
+      ),
+      p(cls("hint", "settings-hint"), "A change starts a new run.")
+    )
 
   private def orderOption(
       text: String,

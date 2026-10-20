@@ -8,7 +8,8 @@ import scala.util.Failure
 import scala.util.Success
 
 /** The sandbox screen. It has one primary action at a time: the seeded next step, "Continue from
-  * step k" on a past step, or "Run again" at the end.
+  * step k" on a past step, or "Run again" at the end. The settings are always visible: in a column
+  * next to the canvas on a wide screen, and under the timeline on a narrow screen.
   */
 object Sandbox {
 
@@ -29,8 +30,7 @@ object Sandbox {
               case CopyState.Idle | CopyState.Failed => "Copy link"
             },
             onClick --> { _ => copyLink(dispatch) }
-          ),
-          button(cls("quiet"), "Settings", onClick.mapTo(UiEvent.ToggleSettings) --> dispatch)
+          )
         )
       ),
       mainTag(
@@ -40,44 +40,50 @@ object Sandbox {
             .when(failed)(p(cls("aside", "copy-hint"), "Copy the address bar to share this run."))
         },
         div(
-          cls("stage"),
-          cls("has-panel") <-- panel.map(_.isDefined),
-          Canvas.render(frame, dispatch),
-          Panels.render(panel, dispatch)
-        ),
-        div(
-          cls("controls"),
-          child.maybe <-- screen
-            .map(_.primary)
-            .distinct
-            .map(_.map { primary =>
-              button(
-                cls("primary"),
-                primary.label,
-                primary.hint.map(title(_)),
-                onClick.mapTo(primary.event) --> dispatch
-              )
-            }),
-          Timeline.render(screen, dispatch)
-        ),
-        div(
-          cls("lines"),
-          p(cls("status"), text <-- frame.map(_.status)),
-          child.maybe <-- frame.map(
-            _.decidedAt.map(n => p(cls("fact"), s"Algorithm decided at step $n"))
-          ),
-          child.maybe <-- frame.map(_.quiescentAt.map { n =>
-            p(
-              cls("fact"),
-              s"Network quiescent at step $n ",
-              span(cls("aside"), "(only an observer knows this)")
+          cls("workspace"),
+          div(
+            cls("stage"),
+            Canvas.render(frame, dispatch),
+            div(
+              cls("controls"),
+              child.maybe <-- screen
+                .map(_.primary)
+                .distinct
+                .map(_.map { primary =>
+                  button(
+                    cls("primary"),
+                    primary.label,
+                    primary.hint.map(title(_)),
+                    onClick.mapTo(primary.event) --> dispatch
+                  )
+                }),
+              Timeline.render(screen, dispatch)
+            ),
+            div(
+              cls("lines"),
+              p(cls("status"), text <-- frame.map(_.status)),
+              child.maybe <-- frame.map(
+                _.decidedAt.map(n => p(cls("fact"), s"Algorithm decided at step $n"))
+              ),
+              child.maybe <-- frame.map(_.quiescentAt.map { n =>
+                p(
+                  cls("fact"),
+                  s"Network quiescent at step $n ",
+                  span(cls("aside"), "(only an observer knows this)")
+                )
+              }),
+              child.maybe <-- frame.map(
+                _.limitAt.map(n => p(cls("fact"), s"Run stopped at the step limit, step $n"))
+              ),
+              child.maybe <-- screen.map(_.branchLine.map(text => p(cls("aside"), text))),
+              child.maybe <-- screen.map(_.refused.map(text => p(cls("refused"), text)))
             )
-          }),
-          child.maybe <-- frame.map(
-            _.limitAt.map(n => p(cls("fact"), s"Run stopped at the step limit, step $n"))
           ),
-          child.maybe <-- screen.map(_.branchLine.map(text => p(cls("aside"), text))),
-          child.maybe <-- screen.map(_.refused.map(text => p(cls("refused"), text)))
+          asideTag(
+            cls("side"),
+            Panels.settings(screen.map(_.settings), dispatch),
+            Panels.render(panel, dispatch)
+          )
         )
       )
     )

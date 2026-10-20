@@ -19,12 +19,13 @@ enum Speed(val label: String, val intervalMs: Int) {
   }
 }
 
-/** The one side panel that is open. Panels are closed by default. */
+/** The inspector that is open: a node or an envelope. It is closed by default. The settings are
+  * always visible, so they are not a panel.
+  */
 enum Panel {
   case Closed
   case Node(id: NodeId)
   case Envelope(id: EnvelopeId)
-  case Settings
 }
 
 /** The screen state that is not part of the run. `size` is the measured size of the canvas. */
@@ -63,7 +64,6 @@ enum UiEvent {
   case SelectNode(id: NodeId)
   case SelectEnvelope(id: EnvelopeId)
   case ClosePanel
-  case ToggleSettings
   case ChoosePreset(name: String)
   case ChooseSeed(seed: Long)
   case ChooseOrder(order: ChannelOrder)
@@ -151,7 +151,6 @@ object Ui {
       case UiEvent.SelectNode(id) => runAndShow(session, toggle(view.panel, Panel.Node(id)))
       case UiEvent.SelectEnvelope(id) => runAndShow(session, toggle(view.panel, Panel.Envelope(id)))
       case UiEvent.ClosePanel         => runAndShow(session, Panel.Closed)
-      case UiEvent.ToggleSettings     => runAndShow(session, toggle(view.panel, Panel.Settings))
       case UiEvent.ChoosePreset(name) =>
         Page.Sandbox(session.withPreset(name), view.copy(playing = false))
       case UiEvent.ChooseSeed(seed) =>
@@ -197,13 +196,13 @@ object Ui {
           case Panel.Closed       => None
           case Panel.Node(id)     => session.nodePanel(id)
           case Panel.Envelope(id) => session.envelopePanel(frame, id)
-          case Panel.Settings     => Some(PanelView.SettingsInfo(session.settings))
         }
         Screen(
           session.alg.name,
           frame,
           session.primary,
           panel,
+          session.settings,
           session.branchLine,
           session.refused,
           view.playing,

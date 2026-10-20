@@ -133,7 +133,7 @@ object Frame {
   }
 }
 
-/** The content of the side panel. */
+/** The content of the inspector. */
 enum PanelView {
   case NodeInfo(
       id: NodeId,
@@ -144,13 +144,12 @@ enum PanelView {
       decision: Option[String]
   )
   case EnvelopeInfo(envelope: EnvelopeView, canDeliver: Boolean)
-  case SettingsInfo(settings: SettingsView)
 }
 
 /** One topology choice: the name in the link and the title that the learner reads. */
 final case class PresetChoice(name: String, title: String)
 
-/** The choices of the settings panel. */
+/** The choices of the settings, which are always visible. */
 final case class SettingsView(
     presets: List[PresetChoice],
     preset: Option[String],
@@ -173,6 +172,7 @@ final case class Screen(
     frame: Frame,
     primary: Option[Primary],
     panel: Option[PanelView],
+    settings: SettingsView,
     branchLine: Option[String],
     refused: Option[String],
     playing: Boolean,

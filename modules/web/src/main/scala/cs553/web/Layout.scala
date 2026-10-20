@@ -66,12 +66,7 @@ object Layout {
     // A wide canvas gets a flat ellipse and a tall phone canvas a tall one, but neither is thin.
     val rx = math.min(fitX, 1.7 * fitY)
     val ry = math.min(fitY, 1.7 * rx)
-    val order = walk(topology)
-    val n = order.size
-    val positions = order.zipWithIndex.map { case (node, i) =>
-      val angle = -math.Pi / 2 + 2 * math.Pi * i / math.max(n, 1)
-      node -> Point(round(rx * math.cos(angle)), round(ry * math.sin(angle)))
-    }.toMap
+    val positions = ring(topology, rx, ry)
     // Centre the drawing on the nodes that exist: a pentagon has no node at the bottom of the
     // ellipse, so its drawing is shorter than the ellipse.
     val ys = positions.values.map(_.y)
@@ -79,6 +74,18 @@ object Layout {
     val bottom = ys.maxOption.getOrElse(ry) + m.bottom
     val boxY = (top + bottom) / 2 - height / 2
     Plan(Box(-width / 2, boxY, width, height), positions, rx, ry, narrow)
+  }
+
+  /** The nodes on an ellipse with the radii `rx` and `ry` around `(0, 0)`, clockwise from the top,
+    * in the order of `walk`. The canvas and the home thumbnails use the same positions.
+    */
+  def ring(topology: Topology, rx: Double, ry: Double): Map[NodeId, Point] = {
+    val order = walk(topology)
+    val n = order.size
+    order.zipWithIndex.map { case (node, i) =>
+      val angle = -math.Pi / 2 + 2 * math.Pi * i / math.max(n, 1)
+      node -> Point(round(rx * math.cos(angle)), round(ry * math.sin(angle)))
+    }.toMap
   }
 
   /** The side of the label of a node at `at`, for a ring with the vertical radius `ry`. The top
