@@ -417,3 +417,48 @@ a.card:hover .card-name { color: var(--accent); }
 }
 
 .label-card { fill: var(--surface); pointer-events: none; }
+
+/* Two views of one run: a quiet switch above the canvas. */
+.view-switch { display: flex; gap: 2px; margin: 0 0 8px; }
+.seg { height: 28px; font-size: 13px; }
+.seg--on, .seg--on:hover:not(:disabled) { color: var(--text); background: var(--line); }
+.canvas--hidden { display: none; }
+.link { display: inline-flex; align-items: center; }
+
+/* Space-time view */
+.spacetime { overflow: auto; max-height: min(62vh, 520px); }
+.st-arrowhead { fill: var(--muted); }
+.spacetime-svg { display: block; font-family: var(--font); }
+.st-lane { stroke: var(--line-strong); stroke-width: 1.2; }
+.st-label { font-size: 12px; fill: var(--muted); }
+.st-now { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0.7; }
+.st-arrow { stroke: var(--muted); stroke-width: 1.3; }
+.st-arrow--open { stroke: var(--accent); stroke-dasharray: 4 3; }
+.st-dot { cursor: pointer; }
+.st-dot--step { fill: var(--surface); stroke: var(--muted); stroke-width: 1.5; }
+.st-dot--rejected { fill: var(--red-soft); stroke: var(--red); stroke-width: 1.5; }
+.st-dot--decided { fill: var(--done); stroke: var(--done); }
+.st-dot--now { stroke: var(--accent); stroke-width: 2.5; }
+.st-cut { fill: none; stroke: var(--red); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.st-cut-ring { fill: none; stroke: var(--red); stroke-width: 1.2; }
+.st-marker { stroke-width: 1; stroke-dasharray: 1 4; }
+.st-marker--decided { stroke: var(--done); }
+.st-marker--quiescent { stroke: var(--muted); }
+.st-marker-label { font-size: 11px; }
+text.st-marker--decided { fill: var(--done); stroke: none; }
+text.st-marker--quiescent { fill: var(--muted); stroke: none; }
+
+/* Lesson */
+.lesson-text { margin-top: 14px; min-height: calc(3 * 1.5em + 8px); max-width: 640px; }
+.narration { margin: 0 0 6px; font-size: 17px; }
+.lesson-text .aside, .reply { margin: 2px 0; }
+.reply--right { color: var(--done); font-weight: 500; }
+.reply--wrong { color: var(--muted); }
+.lesson-controls { justify-content: space-between; }
+.primary--link { display: inline-flex; align-items: center; justify-content: center; }
+
+@media (max-width: 640px) {
+  .spacetime { max-height: min(58vh, 480px); }
+  .lesson-controls { flex-direction: row; }
+  .lesson-controls .primary { width: auto; }
+}

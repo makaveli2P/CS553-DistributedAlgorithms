@@ -438,6 +438,48 @@ final case class Session[S, M, A, O](
     )
   }
 
+  /** The run up to the shown step, in the terms of the space-time view. */
+  def spaceModel: SpaceModel = {
+    val delivered: Map[EnvelopeId, Int] = events.collect {
+      case TraceEvent.Stepped(at, _, Choice.Deliver(id), _, _, _) => id -> at.step
+      case TraceEvent.Rejected(at, _, Choice.Deliver(id), _)      => id -> at.step
+    }.toMap
+    val decisions = events.collect { case TraceEvent.Decided(at, node, output) =>
+      SpaceDot(
+        node,
+        at.step,
+        DotKind.Decided,
+        s"Node ${node.value} decided: ${alg.inspectOutput.label(output)}"
+      )
+    }.toList
+    val decidedHere = decisions.map(d => (d.node, d.step)).toSet
+    val steps = events.toList.collect {
+      case TraceEvent.Stepped(at, node, cause, _, _, _) if !decidedHere((node, at.step)) =>
+        SpaceDot(node, at.step, DotKind.Step, s"Step ${at.step}: ${describe(cause)}")
+      case TraceEvent.Rejected(at, node, cause, _) if !decidedHere((node, at.step)) =>
+        SpaceDot(node, at.step, DotKind.Rejected, s"Step ${at.step}: refused, ${describe(cause)}")
+    }
+    val messages = events.toList.collect {
+      case TraceEvent.Sent(at, env) if at.step <= cursor =>
+        SpaceMessage(env.id, msgLabel(env.id), at.step, delivered.get(env.id).filter(_ <= cursor))
+    }
+    def finishedAs(want: Outcome): Option[Int] = finish.collect {
+      case (step, outcome) if outcome == want && step <= cursor => step
+    }
+    SpaceModel(
+      sim.worlds.headOption.fold(List.empty[NodeId])(_.states.keys.toList),
+      last,
+      cursor,
+      (steps ++ decisions).filter(_.step <= cursor).sortBy(_.step),
+      messages,
+      cuts.filter(_._2 <= cursor),
+      firstDecision.filter(_ <= cursor),
+      finishedAs(Outcome.Quiescent)
+    )
+  }
+
+  def spaceTime(size: Size): SpaceLayout = SpaceTime.layout(spaceModel, size)
+
   def nodePanel(node: NodeId): Option[PanelView] = {
     sim.worlds.lift(cursor).flatMap(w => w.states.get(node).map(w -> _)).map { case (w, state) =>
       val mine = shown.collect { case TraceEvent.Stepped(at, `node`, cause, rule, _, _) =>

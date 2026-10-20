@@ -27,13 +27,18 @@ object App {
         case Some(ms) => EventStream.periodic(ms).drop(1).mapTo(UiEvent.Tick)
         case None     => EventStream.empty
       } --> dispatch,
-      child <-- state.signal.map(Ui.screen).splitOne(_.isDefined) { (sandbox, _, screens) =>
-        if sandbox then {
-          val initial = Ui.screen(state.now())
-          initial.fold(Home.render(state.signal.map(Ui.notice))) { first =>
-            Sandbox.render(screens.map(_.getOrElse(first)), dispatch)
-          }
-        } else { Home.render(state.signal.map(Ui.notice)) }
+      child <-- state.signal.map(Ui.kind).splitOne(identity) { (kind, _, _) =>
+        kind match {
+          case PageKind.Home    => Home.render(state.signal.map(Ui.notice))
+          case PageKind.Sandbox =>
+            Ui.screen(state.now()).fold(Home.render(state.signal.map(Ui.notice))) { first =>
+              Sandbox.render(state.signal.map(Ui.screen).map(_.getOrElse(first)), dispatch)
+            }
+          case PageKind.Lesson =>
+            Ui.lessonScreen(state.now()).fold(Home.render(state.signal.map(Ui.notice))) { first =>
+              LessonView.render(state.signal.map(Ui.lessonScreen).map(_.getOrElse(first)), dispatch)
+            }
+        }
       }
     )
     renderOnDomContentLoaded(dom.document.getElementById("app"), page): Unit

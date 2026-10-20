@@ -1,5 +1,6 @@
 package cs553.web
 
+import cs553.core.ids.AlgorithmId
 import cs553.core.ids.NodeId
 import cs553.core.protocol.ChannelOrder
 import cs553.core.trace.ChannelRecord
@@ -206,5 +207,22 @@ final case class Screen(
     refused: Option[String],
     playing: Boolean,
     speed: Speed,
-    copy: CopyState
+    copy: CopyState,
+    mode: ViewMode,
+    spaceTime: Option[SpaceLayout],
+    lesson: Option[Route]
+)
+
+/** All that a lesson screen shows: the canvas at the step of the screen, one sentence, and the
+  * place in the lesson. `asking` is true on the last screen, where a click on a node answers.
+  */
+final case class LessonScreen(
+    title: String,
+    frame: Frame,
+    text: String,
+    index: Int,
+    total: Int,
+    asking: Boolean,
+    reply: Option[Reply],
+    algorithm: AlgorithmId
 )

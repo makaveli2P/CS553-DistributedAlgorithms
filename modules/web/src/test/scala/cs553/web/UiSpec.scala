@@ -22,13 +22,13 @@ final class UiSpec extends AnyFunSuite {
     Ui.update(Ui.initial, UiEvent.Navigate(Route.Open(AlgorithmId(id))))
 
   private def session(state: UiState): Option[Session[?, ?, ?, ?]] = state.page match {
-    case Page.Sandbox(s, _) => Some(s)
-    case Page.Home(_)       => None
+    case Page.Sandbox(s, _)                        => Some(s)
+    case Page.Home(_) | Page.Lesson(_, _, _, _, _) => None
   }
 
   private def view(state: UiState): Option[View] = state.page match {
-    case Page.Sandbox(_, v) => Some(v)
-    case Page.Home(_)       => None
+    case Page.Sandbox(_, v)                        => Some(v)
+    case Page.Home(_) | Page.Lesson(_, _, _, _, _) => None
   }
 
   private def apply(state: UiState, events: UiEvent*): UiState = events.foldLeft(state)(Ui.update)
@@ -45,7 +45,12 @@ final class UiSpec extends AnyFunSuite {
   }
 
   test("a route renders to a fragment and parses back") {
-    val routes = List(Route.Home, Route.Open(AlgorithmId("echo")), Route.Replay("1.abc_-", Some(4)))
+    val routes = List(
+      Route.Home,
+      Route.Open(AlgorithmId("echo")),
+      Route.Replay("1.abc_-", Some(4)),
+      Route.Lesson(AlgorithmId("echo"))
+    )
     routes.foreach(r => assert(Route.parse(Route.render(r)) == r))
     assert(Route.parse("") == Route.Home)
     assert(Route.parse("#/run/1.abc/x") == Route.Replay("1.abc", None))
